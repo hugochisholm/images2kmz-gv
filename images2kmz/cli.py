@@ -252,7 +252,8 @@ def run(args: Optional[list] = None) -> int:
                 gps_data=img_data['gps'],
                 thumbnail_bytes=img_data['thumbnail'],
                 name=img_data.get('custom_name', img_data['filename']),
-                description_text=img_data.get('description_text')
+                description_text=img_data.get('description_text'),
+                bearing=img_data.get('bearing')
             )
         
         # Save KMZ file

@@ -36,7 +36,8 @@ class KMZGenerator:
     
     def add_photo(self, photo_path: str, gps_data: GPSData, 
                   thumbnail_bytes: bytes, name: Optional[str] = None,
-                  description_text: Optional[str] = None) -> None:
+                  description_text: Optional[str] = None,
+                  bearing: Optional[Dict] = None) -> None:
         """
         Add a photo to the KMZ file.
         
@@ -46,6 +47,7 @@ class KMZGenerator:
             thumbnail_bytes: Thumbnail image data (JPEG)
             name: Display name for placemark (defaults to filename)
             description_text: Custom description text from EXIF (displayed in bold below thumbnail)
+            bearing: Compass bearing data from EXIF (displayed above location)
         """
         # Use filename as default name
         if name is None:
@@ -87,6 +89,12 @@ class KMZGenerator:
             formatted_desc = description_text.replace(' - ', '<br/>')
             description_html_parts.append(
                 f'<p style="font-weight: bold; margin: 10px 0;">{formatted_desc}</p>'
+            )
+        
+        # Add compass bearing if available (displayed above location)
+        if bearing and bearing.get('raw_text'):
+            description_html_parts.append(
+                f'<p style="margin-top: 10px; font-size: 0.95em;">Direction: {bearing["raw_text"]}</p>'
             )
         
         # Add link to original photo

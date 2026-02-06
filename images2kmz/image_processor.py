@@ -148,6 +148,117 @@ def extract_custom_pin_name(image_path: str, fallback_name: str) -> Tuple[str, O
         return fallback_name, None
 
 
+def get_compass_bearing(image_path: str) -> Optional[Dict]:
+    """
+    Extract compass bearing from EXIF GPS image direction data.
+    
+    Converts GPSImgDirection (as a ratio) to compass bearing with 8-point
+    cardinal direction and azimuth in degrees.
+    
+    Args:
+        image_path: Path to image file
+        
+    Returns:
+        Dictionary with bearing data:
+        {
+            'azimuth': int,        # 0-359 degrees (rounded)
+            'compass': str,        # 'N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'
+            'reference': Optional[str],  # 'Mag' or 'True' (None if not specified)
+            'raw_text': str        # e.g., 'NW 316° Mag' or 'NE 45°'
+        }
+        Returns None if no bearing data found in EXIF
+    """
+    try:
+        import piexif
+        
+        with Image.open(image_path) as img:
+            exif_data = img.info.get('exif')
+            if not exif_data:
+                return None
+            
+            exif_dict = piexif.load(exif_data)
+            
+            # Get GPS IFD
+            if 'GPS' not in exif_dict:
+                return None
+            
+            gps_ifd = exif_dict['GPS']
+            
+            # Tag 17 = GPSImgDirection (as ratio/fraction)
+            if 17 not in gps_ifd:
+                return None
+            
+            # Extract direction ratio
+            direction_ratio = gps_ifd[17]
+            if not direction_ratio or len(direction_ratio) != 2:
+                return None
+            
+            numerator, denominator = direction_ratio
+            
+            # Avoid division by zero
+            if denominator == 0:
+                return None
+            
+            # Convert ratio to degrees
+            degrees = float(numerator) / float(denominator)
+            
+            # Round to nearest integer and normalize to 0-359
+            azimuth = int(round(degrees)) % 360
+            
+            # Get reference (Tag 16 = GPSImgDirectionRef)
+            reference_text = None
+            if 16 in gps_ifd:
+                reference_raw = gps_ifd[16]
+                if isinstance(reference_raw, bytes):
+                    reference_raw = reference_raw.decode('utf-8', errors='ignore').strip()
+                
+                if reference_raw == 'T':
+                    reference_text = 'True'
+                elif reference_raw == 'M':
+                    reference_text = 'Mag'
+            
+            # Convert azimuth to 8-point compass
+            compass_directions = {
+                'N': (337.5, 22.5),
+                'NE': (22.5, 67.5),
+                'E': (67.5, 112.5),
+                'SE': (112.5, 157.5),
+                'S': (157.5, 202.5),
+                'SW': (202.5, 247.5),
+                'W': (247.5, 292.5),
+                'NW': (292.5, 337.5),
+            }
+            
+            compass_dir = 'N'  # Default
+            for direction, (min_angle, max_angle) in compass_directions.items():
+                if direction == 'N':
+                    # N wraps around 360/0
+                    if azimuth >= min_angle or azimuth < max_angle:
+                        compass_dir = direction
+                        break
+                else:
+                    if min_angle <= azimuth < max_angle:
+                        compass_dir = direction
+                        break
+            
+            # Build raw text
+            if reference_text:
+                raw_text = f'{compass_dir} {azimuth}° {reference_text}'
+            else:
+                raw_text = f'{compass_dir} {azimuth}°'
+            
+            return {
+                'azimuth': azimuth,
+                'compass': compass_dir,
+                'reference': reference_text,
+                'raw_text': raw_text
+            }
+            
+    except Exception:
+        # Silent failure - return None
+        return None
+
+
 def is_supported_format(file_path: str) -> bool:
     """
     Check if file is a supported image format.
@@ -227,7 +338,8 @@ class ImageProcessor:
                 'gps': GPSData,
                 'thumbnail': bytes,
                 'custom_name': str,
-                'description_text': Optional[str]
+                'description_text': Optional[str],
+                'bearing': Optional[Dict]
             }
         """
         image_files = get_image_files(directory, recursive)
@@ -253,13 +365,17 @@ class ImageProcessor:
                 # Extract custom pin name and description from EXIF
                 custom_name, description_text = extract_custom_pin_name(image_path, filename)
                 
+                # Extract compass bearing from EXIF
+                bearing = get_compass_bearing(image_path)
+                
                 processed_images.append({
                     'path': image_path,
                     'filename': filename,
                     'gps': gps_data,
                     'thumbnail': thumbnail_bytes,
                     'custom_name': custom_name,
-                    'description_text': description_text
+                    'description_text': description_text,
+                    'bearing': bearing
                 })
                 
                 self.stats['processed'] += 1
