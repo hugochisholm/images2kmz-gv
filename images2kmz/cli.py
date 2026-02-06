@@ -3,12 +3,16 @@
 import argparse
 import os
 import sys
-from typing import Optional
+from datetime import datetime
+from typing import Optional, Dict
+
+from rich.console import Console
 
 from .core import KMZGenerator
 from .image_processor import ImageProcessor
 from .heic_handler import HEICHandler, is_heic_supported, batch_convert_heic
 from .utils import get_absolute_path
+from .progress import ProgressBar, create_progress_callback
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -115,46 +119,55 @@ def prompt_for_directory() -> str:
             return abs_path
 
 
-def print_summary(processor_stats: dict, kmz_generator: Optional[KMZGenerator], output_path: Optional[str]):
+def print_summary(
+    processor_stats: Dict,
+    kmz_generator: Optional[KMZGenerator],
+    output_path: Optional[str],
+    console: Optional[Console] = None,
+):
     """
-    Print processing summary.
+    Print processing summary with colored output.
     
     Args:
         processor_stats: Statistics from ImageProcessor
         kmz_generator: KMZGenerator instance
         output_path: Path to output KMZ file
+        console: Optional Console instance for rich output
     """
-    print("\n" + "=" * 60)
-    print("Summary:")
-    print("=" * 60)
+    if console is None:
+        console = Console()
+    
+    separator = "=" * 60
+    console.print(f"\n[bold magenta]{separator}[/bold magenta]")
+    console.print("[bold magenta]Summary:[/bold magenta]")
+    console.print(f"[bold magenta]{separator}[/bold magenta]")
     
     # Processing stats
-    total = processor_stats['total_found']
     processed = processor_stats['processed']
     skipped = processor_stats['skipped_no_gps']
     errors = processor_stats['errors']
     
     if processed > 0:
-        print(f"✓ Processed: {processed} photo{'s' if processed != 1 else ''} with GPS data")
+        console.print(f"[green]✓ Processed: {processed} photo{'s' if processed != 1 else ''} with GPS data[/green]")
     
     if skipped > 0:
-        print(f"⊗ Skipped: {skipped} photo{'s' if skipped != 1 else ''} (no GPS data)")
+        console.print(f"[yellow]⊗ Skipped: {skipped} photo{'s' if skipped != 1 else ''} (no GPS data)[/yellow]")
     
     if errors > 0:
-        print(f"✗ Errors: {errors} photo{'s' if errors != 1 else ''} (processing failed)")
+        console.print(f"[red]✗ Errors: {errors} photo{'s' if errors != 1 else ''} (processing failed)[/red]")
     
     # Output file info
     if processed > 0 and kmz_generator and output_path:
         file_size = kmz_generator.get_formatted_file_size()
         if file_size:
-            print(f"📦 Output: {os.path.basename(output_path)} ({file_size})")
+            console.print(f"[green]📦 Output: {os.path.basename(output_path)} ({file_size})[/green]")
         else:
-            print(f"📦 Output: {os.path.basename(output_path)}")
-        print(f"   Path: {output_path}")
+            console.print(f"[green]📦 Output: {os.path.basename(output_path)}[/green]")
+        console.print(f"   [dim]Path: {output_path}[/dim]")
     else:
-        print("\n⚠ No photos with GPS data found. KMZ file not created.")
+        console.print("\n[bold yellow]⚠ No photos with GPS data found. KMZ file not created.[/bold yellow]")
     
-    print("=" * 60)
+    console.print(f"[bold magenta]{separator}[/bold magenta]\n")
 
 
 def run(args: Optional[list] = None) -> int:
@@ -167,6 +180,9 @@ def run(args: Optional[list] = None) -> int:
     Returns:
         Exit code (0 for success, non-zero for error)
     """
+    # Initialize console for colored output
+    console = Console()
+    
     # Parse arguments
     parser = create_parser()
     parsed_args = parser.parse_args(args)
@@ -180,7 +196,7 @@ def run(args: Optional[list] = None) -> int:
     else:
         input_dir = get_absolute_path(parsed_args.input_dir)
         if not os.path.isdir(input_dir):
-            print(f"\nError: Input directory does not exist: {input_dir}")
+            console.print(f"\n[bold red]Error: Input directory does not exist: {input_dir}[/bold red]")
             return 1
     
     print(f"\nInput directory: {input_dir}")
@@ -188,7 +204,7 @@ def run(args: Optional[list] = None) -> int:
     print(f"Thumbnail size: {parsed_args.thumbnail_size[0]}x{parsed_args.thumbnail_size[1]}")
     
     # Handle HEIC files
-    print(f"\nScanning for images...")
+    console.print("\n[bold cyan]🔍 Scanning for images...[/bold cyan]")
     heic_handler = HEICHandler(input_dir, parsed_args.recursive)
     num_heic = heic_handler.scan()
     
@@ -196,7 +212,7 @@ def run(args: Optional[list] = None) -> int:
         if parsed_args.convert_heic:
             # Auto-convert without prompting
             if is_heic_supported():
-                print(f"\nFound {num_heic} HEIC file{'s' if num_heic != 1 else ''}")
+                console.print(f"\n[yellow]Found {num_heic} HEIC file{'s' if num_heic != 1 else ''}[/yellow]")
                 print("Converting HEIC files...")
                 batch_convert_heic(
                     heic_handler.heic_files,
@@ -204,34 +220,64 @@ def run(args: Optional[list] = None) -> int:
                     move_originals=True
                 )
             else:
-                print(f"\nWarning: Found {num_heic} HEIC file{'s' if num_heic != 1 else ''}, but HEIC support not available.")
+                console.print(f"\n[yellow]Warning: Found {num_heic} HEIC file{'s' if num_heic != 1 else ''}, but HEIC support not available.[/yellow]")
                 print("Install pillow-heif to enable conversion: pip install pillow-heif")
         else:
             # Prompt user
             heic_handler.prompt_and_convert()
     
-    # Process images
-    print(f"\nProcessing JPG images...")
+    # Phase 2: Process images with progress bar
     thumbnail_size = tuple(parsed_args.thumbnail_size)
     processor = ImageProcessor(thumbnail_size=thumbnail_size)
     
+    console.print("[bold cyan]⚙️  Processing images...[/bold cyan]")
+    
     try:
-        processed_images = processor.process_directory(input_dir, parsed_args.recursive)
+        stats = processor.get_stats()
+        from .image_processor import get_image_files
+        
+        image_files = get_image_files(input_dir, parsed_args.recursive)
+        num_images = len(image_files)
+        
+        if num_images > 0:
+            progress_bar = ProgressBar("Processing")
+            progress_bar.start(num_images)
+            try:
+                processed_images = processor.process_directory(
+                    input_dir,
+                    parsed_args.recursive,
+                    progress_callback=create_progress_callback(progress_bar),
+                )
+            finally:
+                progress_bar.finish()
+        else:
+            processed_images = []
+        
+        stats = processor.get_stats()
+        
     except Exception as e:
-        print(f"\nError processing images: {e}")
+        console.print(f"\n[bold red]Error processing images: {e}[/bold red]")
+        import traceback
+        traceback.print_exc()
         return 1
     
-    stats = processor.get_stats()
+    # Show processing results
+    if stats['processed'] > 0:
+        console.print(f"   [green]Processed: {stats['processed']} files[/green]")
+    if stats['skipped_no_gps'] > 0:
+        console.print(f"   [yellow]Skipped: {stats['skipped_no_gps']} (no GPS data)[/yellow]")
     
-    print(f"Found {stats['total_found']} JPG file{'s' if stats['total_found'] != 1 else ''}")
+    # Completion timestamp
+    complete_time = datetime.now().strftime("%I:%M:%S %p")
+    console.print(f"\n[dim cyan]✓ Processing complete at {complete_time}[/dim cyan]")
     
     # Check if we have any images to process
     if not processed_images:
-        print_summary(stats, None, None)
+        print_summary(stats, None, None, console)
         return 0
     
-    # Generate KMZ
-    print(f"\nGenerating KMZ file...")
+    # Phase 3: Generate KMZ with progress bar
+    console.print(f"\n[bold cyan]📦 Generating KMZ file...[/bold cyan]")
     
     # Determine output path
     # If -o flag wasn't explicitly provided, use input_dir as default location
@@ -245,28 +291,36 @@ def run(args: Optional[list] = None) -> int:
     try:
         kmz_gen = KMZGenerator(output_path, thumbnail_size=thumbnail_size)
         
+        kmz_progress = ProgressBar("Adding photos")
+        kmz_progress.start(len(processed_images))
+        
         # Add all processed images
-        for img_data in processed_images:
+        for index, img_data in enumerate(processed_images, 1):
             kmz_gen.add_photo(
                 photo_path=img_data['path'],
                 gps_data=img_data['gps'],
                 thumbnail_bytes=img_data['thumbnail'],
                 name=img_data.get('custom_name', img_data['filename']),
                 description_text=img_data.get('description_text'),
-                bearing=img_data.get('bearing')
+                bearing=img_data.get('bearing'),
             )
+            
+            filename = os.path.basename(img_data['path'])
+            kmz_progress.update(index, len(processed_images), filename)
+        
+        kmz_progress.finish()
         
         # Save KMZ file
         output_path = kmz_gen.save()
         
     except Exception as e:
-        print(f"\nError generating KMZ file: {e}")
+        console.print(f"\n[bold red]Error generating KMZ file: {e}[/bold red]")
         import traceback
         traceback.print_exc()
         return 1
     
-    # Print summary
-    print_summary(stats, kmz_gen, output_path)
+    # Print summary with colored output
+    print_summary(stats, kmz_gen, output_path, console)
     
     return 0
 

@@ -2,7 +2,7 @@
 
 import os
 import tempfile
-from typing import Dict, Optional, Tuple, List
+from typing import Dict, Optional, Tuple, List, Callable
 import simplekml
 
 from .image_processor import GPSData
@@ -17,17 +17,24 @@ class KMZGenerator:
     and links to the original photos.
     """
     
-    def __init__(self, output_path: str, thumbnail_size: Tuple[int, int] = (800, 600)):
+    def __init__(
+        self,
+        output_path: str,
+        thumbnail_size: Tuple[int, int] = (800, 600),
+        progress_callback: Optional[Callable[[int, int, str], None]] = None,
+    ):
         """
         Initialize KMZ generator.
         
         Args:
             output_path: Path for output KMZ file
             thumbnail_size: Maximum thumbnail dimensions (for reference)
+            progress_callback: Optional callback(current, total, filename) for progress tracking
         """
         self.output_path = output_path
         self.thumbnail_size = thumbnail_size
         self.kml = simplekml.Kml()
+        self.progress_callback = progress_callback
         self.stats = {
             'photos_added': 0,
             'total_size': 0

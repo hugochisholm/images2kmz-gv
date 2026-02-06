@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from typing import Optional, Tuple, List, Dict
+from typing import Optional, Tuple, List, Dict, Callable
 from io import BytesIO
 
 from PIL import Image
@@ -322,13 +322,19 @@ class ImageProcessor:
             'errors': 0
         }
     
-    def process_directory(self, directory: str, recursive: bool = False) -> List[Dict]:
+    def process_directory(
+        self,
+        directory: str,
+        recursive: bool = False,
+        progress_callback: Optional[Callable[[int, int, str], None]] = None,
+    ) -> List[Dict]:
         """
         Process all images in a directory.
         
         Args:
             directory: Directory to scan
             recursive: Search recursively
+            progress_callback: Optional callback(current, total, filename) for progress tracking
             
         Returns:
             List of dicts with processed image info:
@@ -347,7 +353,7 @@ class ImageProcessor:
         
         processed_images = []
         
-        for image_path in image_files:
+        for index, image_path in enumerate(image_files, 1):
             try:
                 # Extract GPS data
                 gps_data = extract_gps_data(image_path)
@@ -379,6 +385,10 @@ class ImageProcessor:
                 })
                 
                 self.stats['processed'] += 1
+                
+                # Fire progress callback
+                if progress_callback:
+                    progress_callback(index, len(image_files), filename)
                 
             except Exception as e:
                 self.stats['errors'] += 1
