@@ -7,7 +7,7 @@ suitable for viewing in Google Earth and other mapping applications.
 """
 
 __version__ = '0.2.0'
-__author__ = 'Your Name'
+__author__ = 'Hugo Chisholm'
 __license__ = 'MIT'
 
 # Core functionality
