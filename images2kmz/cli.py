@@ -199,9 +199,9 @@ def run(args: Optional[list] = None) -> int:
             console.print(f"\n[bold red]Error: Input directory does not exist: {input_dir}[/bold red]")
             return 1
     
-    print(f"\nInput directory: {input_dir}")
-    print(f"Recursive search: {'Yes' if parsed_args.recursive else 'No'}")
-    print(f"Thumbnail size: {parsed_args.thumbnail_size[0]}x{parsed_args.thumbnail_size[1]}")
+    console.print(f"\n[cyan]Input directory: {input_dir}[/cyan]")
+    console.print(f"[cyan]Recursive search: {'Yes' if parsed_args.recursive else 'No'}[/cyan]")
+    console.print(f"[cyan]Thumbnail size: {parsed_args.thumbnail_size[0]}x{parsed_args.thumbnail_size[1]}[/cyan]")
     
     # Handle HEIC files
     console.print("\n[bold cyan]🔍 Scanning for images...[/bold cyan]")
@@ -213,7 +213,7 @@ def run(args: Optional[list] = None) -> int:
             # Auto-convert without prompting
             if is_heic_supported():
                 console.print(f"\n[yellow]Found {num_heic} HEIC file{'s' if num_heic != 1 else ''}[/yellow]")
-                print("Converting HEIC files...")
+                console.print("[dim yellow]Converting HEIC files...[/dim yellow]")
                 batch_convert_heic(
                     heic_handler.heic_files,
                     output_dir=input_dir,
@@ -221,7 +221,7 @@ def run(args: Optional[list] = None) -> int:
                 )
             else:
                 console.print(f"\n[yellow]Warning: Found {num_heic} HEIC file{'s' if num_heic != 1 else ''}, but HEIC support not available.[/yellow]")
-                print("Install pillow-heif to enable conversion: pip install pillow-heif")
+                console.print("[yellow]Install pillow-heif to enable conversion: pip install pillow-heif[/yellow]")
         else:
             # Prompt user
             heic_handler.prompt_and_convert()
@@ -230,14 +230,16 @@ def run(args: Optional[list] = None) -> int:
     thumbnail_size = tuple(parsed_args.thumbnail_size)
     processor = ImageProcessor(thumbnail_size=thumbnail_size)
     
+    from .image_processor import get_image_files
+    
+    image_files = get_image_files(input_dir, parsed_args.recursive)
+    num_images = len(image_files)
+    console.print(f"[cyan]Found {num_images} JPG file{'s' if num_images != 1 else ''}[/cyan]\n")
+    
     console.print("[bold cyan]⚙️  Processing images...[/bold cyan]")
     
     try:
         stats = processor.get_stats()
-        from .image_processor import get_image_files
-        
-        image_files = get_image_files(input_dir, parsed_args.recursive)
-        num_images = len(image_files)
         
         if num_images > 0:
             progress_bar = ProgressBar("Processing")
