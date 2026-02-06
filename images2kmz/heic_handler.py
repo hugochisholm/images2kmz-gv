@@ -59,7 +59,9 @@ def find_heic_files(directory: str, recursive: bool = False) -> List[str]:
 
 def convert_heic_to_jpg(heic_path: str, output_dir: Optional[str] = None) -> Optional[str]:
     """
-    Convert a single HEIC file to JPEG.
+    Convert a single HEIC file to JPEG, preserving EXIF metadata.
+    
+    Preserves all EXIF data including GPS information, camera metadata, and orientation.
     
     Args:
         heic_path: Path to HEIC file
@@ -82,6 +84,9 @@ def convert_heic_to_jpg(heic_path: str, output_dir: Optional[str] = None) -> Opt
         
         # Open and convert
         with Image.open(heic_path) as img:
+            # Extract EXIF data BEFORE any image modifications
+            exif_data = img.info.get('exif')
+            
             # Handle EXIF orientation
             try:
                 from PIL import ImageOps
@@ -93,8 +98,11 @@ def convert_heic_to_jpg(heic_path: str, output_dir: Optional[str] = None) -> Opt
             if img.mode not in ('RGB', 'L'):
                 img = img.convert('RGB')
             
-            # Save as JPEG
-            img.save(jpg_path, 'JPEG', quality=95, optimize=True)
+            # Save as JPEG with EXIF data preserved
+            if exif_data:
+                img.save(jpg_path, 'JPEG', quality=95, optimize=True, exif=exif_data)
+            else:
+                img.save(jpg_path, 'JPEG', quality=95, optimize=True)
         
         return jpg_path
         
