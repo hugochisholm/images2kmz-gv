@@ -33,6 +33,21 @@ Or uncomment the `pillow-heif` line in `requirements.txt` and reinstall.
 
 ## Usage
 
+### Interactive Mode
+
+Run without arguments for an interactive experience:
+
+```bash
+python main.py
+```
+
+You'll be prompted to:
+1. Enter a directory path containing images
+2. Optionally create the directory if it doesn't exist
+3. The generated KMZ file will be saved in the same directory
+
+**Supports:** relative paths (`./photos`), absolute paths (`/Users/username/photos`), home directory (`~/photos`), and Windows paths (`C:\Users\username\Pictures`)
+
 ### Command Line
 
 Basic usage:
@@ -47,10 +62,12 @@ With options:
 python main.py /path/to/photos -o output.kmz -r --convert-heic
 ```
 
+**Note:** The KMZ file is now saved in the input directory by default (not the current working directory). Use `-o` to specify a different location.
+
 #### Command-Line Options
 
-- `input_dir`: Directory containing photos (required)
-- `-o, --output`: Output KMZ file path (default: photos.kmz)
+- `input_dir`: Directory containing photos (optional; will prompt if not provided)
+- `-o, --output`: Output KMZ file path (default: `{input_dir}/photos.kmz`)
 - `-r, --recursive`: Recursively search subdirectories
 - `--thumbnail-size WIDTH HEIGHT`: Maximum thumbnail dimensions (default: 800 600)
 - `--convert-heic`: Automatically convert HEIC files without prompting
@@ -58,14 +75,27 @@ python main.py /path/to/photos -o output.kmz -r --convert-heic
 
 #### Examples
 
-Process photos in current directory:
+Interactive mode (prompts for directory):
 ```bash
-python main.py .
+python main.py
 ```
 
-Process photos recursively with custom output:
+Process photos in specified directory:
 ```bash
-python main.py ~/Photos/Vacation -o vacation.kmz -r
+python main.py ~/Photos
+# Output: ~/Photos/photos.kmz
+```
+
+Process photos recursively:
+```bash
+python main.py ~/Photos -r
+# Output: ~/Photos/photos.kmz
+```
+
+Custom output location:
+```bash
+python main.py ~/Photos -o ~/Desktop/vacation.kmz
+# Output: ~/Desktop/vacation.kmz
 ```
 
 Auto-convert HEIC files:
@@ -75,7 +105,7 @@ python main.py ~/Photos -r --convert-heic
 
 Custom thumbnail size:
 ```bash
-python main.py ~/Photos --thumbnail-size 800 600
+python main.py ~/Photos --thumbnail-size 1024 768
 ```
 
 ### As a Python Module

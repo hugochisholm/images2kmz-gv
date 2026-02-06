@@ -21,13 +21,15 @@ def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog='images2kmz',
         description='Create KMZ files from geotagged photos with embedded thumbnails.',
-        epilog='Example: images2kmz ~/field-returns/photos -o field-photos.kmz -r --convert-heic'
+        epilog='Examples: images2kmz (interactive) | images2kmz ~/photos | images2kmz . -o output.kmz -r'
     )
     
     parser.add_argument(
         'input_dir',
         type=str,
-        help='Directory containing photos to process'
+        nargs='?',
+        default=None,
+        help='Directory containing photos (optional; will prompt if not provided)'
     )
     
     parser.add_argument(
@@ -72,6 +74,45 @@ def print_header():
     print("=" * 60)
     print("images2kmz - Geotagged Photo KMZ Generator")
     print("=" * 60)
+
+
+def prompt_for_directory() -> str:
+    """
+    Prompt user to input a directory path for image scanning.
+    Supports relative paths, absolute paths, and Windows-style paths.
+    Creates directory if it doesn't exist and user confirms.
+    
+    Returns:
+        Absolute path to the validated/created directory
+    """
+    while True:
+        user_input = input('Please provide a directory containing images to process: ').strip()
+        
+        if not user_input:
+            print('Error: Path cannot be empty. Please try again.')
+            continue
+        
+        # Handle various path formats (relative, absolute, Windows-style)
+        abs_path = get_absolute_path(user_input)
+        
+        if not os.path.isdir(abs_path):
+            # Directory doesn't exist - ask user if they want to create it
+            response = input(f'Directory does not exist: {abs_path}. Create it? (y/n): ').strip().lower()
+            
+            if response in ('y', 'yes'):
+                try:
+                    os.makedirs(abs_path, exist_ok=True)
+                    print(f'Created directory: {abs_path}')
+                    return abs_path
+                except Exception as e:
+                    print(f'Error creating directory: {e}')
+                    print('Please try again.')
+                    continue
+            else:
+                print('Exiting gracefully.')
+                sys.exit(0)
+        else:
+            return abs_path
 
 
 def print_summary(processor_stats: dict, kmz_generator: Optional[KMZGenerator], output_path: Optional[str]):
@@ -133,11 +174,14 @@ def run(args: Optional[list] = None) -> int:
     # Print header
     print_header()
     
-    # Validate input directory
-    input_dir = get_absolute_path(parsed_args.input_dir)
-    if not os.path.isdir(input_dir):
-        print(f"\nError: Input directory does not exist: {input_dir}")
-        return 1
+    # Handle optional input directory - prompt if not provided
+    if parsed_args.input_dir is None:
+        input_dir = prompt_for_directory()
+    else:
+        input_dir = get_absolute_path(parsed_args.input_dir)
+        if not os.path.isdir(input_dir):
+            print(f"\nError: Input directory does not exist: {input_dir}")
+            return 1
     
     print(f"\nInput directory: {input_dir}")
     print(f"Recursive search: {'Yes' if parsed_args.recursive else 'No'}")
@@ -188,7 +232,15 @@ def run(args: Optional[list] = None) -> int:
     
     # Generate KMZ
     print(f"\nGenerating KMZ file...")
-    output_path = get_absolute_path(parsed_args.output)
+    
+    # Determine output path
+    # If -o flag wasn't explicitly provided, use input_dir as default location
+    if parsed_args.output == 'photos.kmz':  # Check if using default value
+        # No explicit -o provided, use input directory as output location
+        output_path = get_absolute_path(os.path.join(input_dir, parsed_args.output))
+    else:
+        # Explicit -o provided, use as specified (could be relative or absolute)
+        output_path = get_absolute_path(parsed_args.output)
     
     try:
         kmz_gen = KMZGenerator(output_path, thumbnail_size=thumbnail_size)
