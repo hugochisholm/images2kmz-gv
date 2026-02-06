@@ -17,7 +17,7 @@ class KMZGenerator:
     and links to the original photos.
     """
     
-    def __init__(self, output_path: str, thumbnail_size: Tuple[int, int] = (640, 480)):
+    def __init__(self, output_path: str, thumbnail_size: Tuple[int, int] = (800, 600)):
         """
         Initialize KMZ generator.
         
@@ -35,7 +35,8 @@ class KMZGenerator:
         self._temp_files: List[str] = []  # Track temp files to clean up later
     
     def add_photo(self, photo_path: str, gps_data: GPSData, 
-                  thumbnail_bytes: bytes, name: Optional[str] = None) -> None:
+                  thumbnail_bytes: bytes, name: Optional[str] = None,
+                  description_text: Optional[str] = None) -> None:
         """
         Add a photo to the KMZ file.
         
@@ -44,6 +45,7 @@ class KMZGenerator:
             gps_data: GPS coordinates for photo
             thumbnail_bytes: Thumbnail image data (JPEG)
             name: Display name for placemark (defaults to filename)
+            description_text: Custom description text from EXIF (displayed in bold below thumbnail)
         """
         # Use filename as default name
         if name is None:
@@ -72,17 +74,36 @@ class KMZGenerator:
         
         pnt = self.kml.newpoint(name=name, coords=coords)
         
-        # Create description with embedded thumbnail and link to original
+        # Build description parts
+        description_html_parts = []
+        
+        # Add thumbnail image
+        description_html_parts.append(
+            f'<img src="{embedded_path}" style="max-width: 800px; max-height: 600px; width: auto; height: auto;" /><br/>'
+        )
+        
+        # Add custom description if available (bold, with line breaks replacing " - ")
+        if description_text:
+            formatted_desc = description_text.replace(' - ', '<br/>')
+            description_html_parts.append(
+                f'<p style="font-weight: bold; margin: 10px 0;">{formatted_desc}</p>'
+            )
+        
+        # Add link to original photo
+        description_html_parts.append(
+            f'<p style="margin-top: 10px;"><a href="file://{abs_photo_path}" target="_blank">Open Original Photo</a></p>'
+        )
+        
+        # Add location coordinates
+        description_html_parts.append(
+            f'<p style="font-size: 0.9em; color: #666;">Location: {gps_data.latitude:.6f}, {gps_data.longitude:.6f}</p>'
+        )
+        
+        # Combine all parts
         description = f'''
         <![CDATA[
         <div style="font-family: Arial, sans-serif;">
-            <img src="{embedded_path}" style="max-width: 640px; max-height: 480px; width: auto; height: auto;" /><br/>
-            <p style="margin-top: 10px;">
-                <a href="file://{abs_photo_path}" target="_blank">Open Original Photo</a>
-            </p>
-            <p style="font-size: 0.9em; color: #666;">
-                Location: {gps_data.latitude:.6f}, {gps_data.longitude:.6f}
-            </p>
+            {''.join(description_html_parts)}
         </div>
         ]]>
         '''

@@ -170,7 +170,7 @@ class ImageProcessor:
 - **Rationale:** Consistent documentation format enables auto-generated docs and helps other developers
 
 ```python
-def create_thumbnail(image_path: str, max_size: Tuple[int, int] = (640, 480)) -> bytes:
+def create_thumbnail(image_path: str, max_size: Tuple[int, int] = (800, 600)) -> bytes:
     """
     Create a thumbnail of an image while maintaining aspect ratio.
     

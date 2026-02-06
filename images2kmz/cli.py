@@ -21,7 +21,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog='images2kmz',
         description='Create KMZ files from geotagged photos with embedded thumbnails.',
-        epilog='Example: images2kmz ~/Photos/Vacation -o vacation.kmz -r --convert-heic'
+        epilog='Example: images2kmz ~/field-returns/photos -o field-photos.kmz -r --convert-heic'
     )
     
     parser.add_argument(
@@ -46,11 +46,11 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         '--thumbnail-size',
         type=int,
-        nargs=2,
-        metavar=('WIDTH', 'HEIGHT'),
-        default=[640, 480],
-        help='Maximum thumbnail dimensions in pixels (default: 640 480)'
-    )
+         nargs=2,
+         metavar=('WIDTH', 'HEIGHT'),
+         default=[800, 600],
+         help='Maximum thumbnail dimensions in pixels (default: 800 600)'
+     )
     
     parser.add_argument(
         '--convert-heic',
@@ -61,7 +61,7 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         '--version',
         action='version',
-        version='%(prog)s 1.0.0'
+        version='%(prog)s 0.1.0'
     )
     
     return parser
@@ -199,7 +199,8 @@ def run(args: Optional[list] = None) -> int:
                 photo_path=img_data['path'],
                 gps_data=img_data['gps'],
                 thumbnail_bytes=img_data['thumbnail'],
-                name=img_data['filename']
+                name=img_data.get('custom_name', img_data['filename']),
+                description_text=img_data.get('description_text')
             )
         
         # Save KMZ file

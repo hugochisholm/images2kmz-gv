@@ -5,7 +5,7 @@ A Python tool to create KMZ files from geotagged photos with embedded thumbnails
 ## Features
 
 - **GPS Extraction**: Automatically extracts GPS coordinates from photo EXIF data
-- **Thumbnail Generation**: Creates 640x480 thumbnails (maintaining aspect ratio) embedded in KMZ
+- **Thumbnail Generation**: Creates 800x600 thumbnails (maintaining aspect ratio) embedded in KMZ
 - **Original Links**: Includes hyperlinks to original photos on your filesystem
 - **HEIC Support**: Optional conversion of HEIC/HEIF files to JPEG
 - **Recursive Scanning**: Can search subdirectories for photos
@@ -52,7 +52,7 @@ python main.py /path/to/photos -o output.kmz -r --convert-heic
 - `input_dir`: Directory containing photos (required)
 - `-o, --output`: Output KMZ file path (default: photos.kmz)
 - `-r, --recursive`: Recursively search subdirectories
-- `--thumbnail-size WIDTH HEIGHT`: Maximum thumbnail dimensions (default: 640 480)
+- `--thumbnail-size WIDTH HEIGHT`: Maximum thumbnail dimensions (default: 800 600)
 - `--convert-heic`: Automatically convert HEIC files without prompting
 - `--version`: Show version information
 
@@ -86,7 +86,7 @@ You can also import and use images2kmz in your own Python scripts:
 from images2kmz import ImageProcessor, KMZGenerator
 
 # Process images
-processor = ImageProcessor(thumbnail_size=(640, 480))
+processor = ImageProcessor(thumbnail_size=(800, 600))
 images = processor.process_directory('/path/to/photos', recursive=True)
 
 # Get statistics
@@ -111,7 +111,7 @@ kmz.save()
 1. **Scanning**: The tool scans the specified directory for JPEG images
 2. **HEIC Handling**: If HEIC files are found, optionally converts them to JPEG
 3. **GPS Extraction**: Reads EXIF data from each image to extract GPS coordinates
-4. **Thumbnail Creation**: Generates resized thumbnails (640x480 max, preserving aspect ratio)
+4. **Thumbnail Creation**: Generates resized thumbnails (800x600 max, preserving aspect ratio)
 5. **KMZ Generation**: Creates a KMZ file with:
    - Placemarks at each photo's GPS location
    - Photo filename as the placemark name
@@ -135,6 +135,7 @@ When you click on a placemark:
 - GPSPhoto >= 2.2.3
 - simplekml >= 1.3.6
 - Pillow >= 12.0.0
+- textual >= 0.30.0 (for TUI interface)
 - pillow-heif >= 0.10.0 (optional, for HEIC support)
 
 ## Project Structure
@@ -147,8 +148,10 @@ images2kmz/
 │   ├── core.py              # KMZ generation engine
 │   ├── image_processor.py   # Image handling (thumbnails, EXIF)
 │   ├── heic_handler.py      # HEIC detection and conversion
-│   └── utils.py             # Utility functions
+│   ├── utils.py             # Utility functions
+│   └── tui_app.py           # Terminal UI application
 ├── main.py                  # Entry point for CLI
+├── tui_main.py              # Entry point for TUI
 ├── requirements.txt         # Python dependencies
 ├── README.md                # This file
 └── .gitignore               # Git ignore patterns

@@ -51,7 +51,7 @@ def extract_gps_data(image_path: str) -> Optional[GPSData]:
         return None
 
 
-def create_thumbnail(image_path: str, max_size: Tuple[int, int] = (640, 480)) -> bytes:
+def create_thumbnail(image_path: str, max_size: Tuple[int, int] = (800, 600)) -> bytes:
     """
     Create a thumbnail of an image while maintaining aspect ratio.
     
@@ -81,6 +81,71 @@ def create_thumbnail(image_path: str, max_size: Tuple[int, int] = (640, 480)) ->
         buffer = BytesIO()
         img.save(buffer, format='JPEG', quality=85, optimize=True)
         return buffer.getvalue()
+
+
+def extract_custom_pin_name(image_path: str, fallback_name: str) -> Tuple[str, Optional[str]]:
+    """
+    Extract custom pin name and description from EXIF ImageDescription.
+    
+    Looks for EXIF ImageDescription starting with "GeoVerra, Nav Photo - ".
+    If found, extracts the part after the prefix as both:
+    - Pin name (truncated to 25 chars with "...")
+    - Full description text (newlines replaced with " - ")
+    
+    Args:
+        image_path: Path to image file
+        fallback_name: Filename to use if custom name not found
+        
+    Returns:
+        Tuple of (pin_name, description_text) where description_text is None
+        if the EXIF pattern wasn't found or if ImageDescription is empty
+    """
+    try:
+        import piexif
+        
+        with Image.open(image_path) as img:
+            exif_data = img.info.get('exif')
+            if not exif_data:
+                return fallback_name, None
+            
+            exif_dict = piexif.load(exif_data)
+            
+            # Tag 270 = ImageDescription (in '0th' IFD)
+            description = None
+            if '0th' in exif_dict:
+                description = exif_dict['0th'].get(270)
+            
+            if not description:
+                return fallback_name, None
+            
+            # Decode if bytes
+            if isinstance(description, bytes):
+                description = description.decode('utf-8', errors='ignore').strip()
+            
+            # Return if empty after stripping
+            if not description:
+                return fallback_name, None
+            
+            # Check for GeoVerra pattern
+            prefix = 'GeoVerra, Nav Photo - '
+            if not description.startswith(prefix):
+                return fallback_name, None
+            
+            # Extract the part after the prefix
+            extracted = description[len(prefix):]
+            
+            # Replace newlines with ' - ' for both pin name and description
+            extracted = extracted.replace('\n', ' - ').replace('\r', '')
+            
+            # Create pin name (25 chars max with "...")
+            pin_name = (extracted[:25] + '...') if len(extracted) > 25 else extracted
+            
+            # Return both the truncated name and full description
+            return pin_name, extracted
+            
+    except Exception:
+        # Silent failure - return fallback
+        return fallback_name, None
 
 
 def is_supported_format(file_path: str) -> bool:
@@ -131,7 +196,7 @@ def get_image_files(directory: str, recursive: bool = False) -> List[str]:
 class ImageProcessor:
     """High-level image processing coordinator."""
     
-    def __init__(self, thumbnail_size: Tuple[int, int] = (640, 480)):
+    def __init__(self, thumbnail_size: Tuple[int, int] = (800, 600)):
         """
         Initialize image processor.
         
@@ -160,7 +225,9 @@ class ImageProcessor:
                 'path': str,
                 'filename': str,
                 'gps': GPSData,
-                'thumbnail': bytes
+                'thumbnail': bytes,
+                'custom_name': str,
+                'description_text': Optional[str]
             }
         """
         image_files = get_image_files(directory, recursive)
@@ -183,11 +250,16 @@ class ImageProcessor:
                 # Get filename
                 filename = os.path.basename(image_path)
                 
+                # Extract custom pin name and description from EXIF
+                custom_name, description_text = extract_custom_pin_name(image_path, filename)
+                
                 processed_images.append({
                     'path': image_path,
                     'filename': filename,
                     'gps': gps_data,
-                    'thumbnail': thumbnail_bytes
+                    'thumbnail': thumbnail_bytes,
+                    'custom_name': custom_name,
+                    'description_text': description_text
                 })
                 
                 self.stats['processed'] += 1
