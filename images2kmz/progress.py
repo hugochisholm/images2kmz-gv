@@ -51,20 +51,16 @@ class ProgressBar:
     def update(
         self, current: int, total: int, filename: Optional[str] = None
     ) -> None:
-        """
-        Update progress with current count and optional filename.
+        task_id = self.task_id
+        if task_id is None:
+            return
 
-        Args:
-            current: Current item number
-            total: Total number of items
-            filename: Optional filename being processed
-        """
         if filename:
             desc = f"{self.description} [{filename}]"
         else:
             desc = self.description
 
-        self.progress.update(self.task_id, completed=current, total=total, description=desc)
+        self.progress.update(task_id, completed=current, total=total, description=desc)
 
     def finish(self) -> None:
         """Mark progress as complete and close the progress display."""

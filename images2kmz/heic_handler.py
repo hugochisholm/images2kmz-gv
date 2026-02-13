@@ -5,26 +5,13 @@ import shutil
 from pathlib import Path
 from typing import List, Optional
 
-try:
-    from PIL import Image
-    from pillow_heif import register_heif_opener
-    HEIC_SUPPORT = True
-    register_heif_opener()
-except ImportError:
-    HEIC_SUPPORT = False
+from PIL import Image
+from pillow_heif import register_heif_opener
 
+# Initialize HEIC support
+register_heif_opener()
 
 HEIC_EXTENSIONS = ('.heic', '.heif')
-
-
-def is_heic_supported() -> bool:
-    """
-    Check if HEIC format is supported.
-    
-    Returns:
-        True if pillow-heif is installed
-    """
-    return HEIC_SUPPORT
 
 
 def find_heic_files(directory: str, recursive: bool = False) -> List[str]:
@@ -70,9 +57,6 @@ def convert_heic_to_jpg(heic_path: str, output_dir: Optional[str] = None) -> Opt
     Returns:
         Path to created JPG file, or None if conversion failed
     """
-    if not HEIC_SUPPORT:
-        raise RuntimeError("HEIC support not available. Install pillow-heif: pip install pillow-heif")
-    
     try:
         # Determine output path
         if output_dir is None:
@@ -125,9 +109,6 @@ def batch_convert_heic(heic_files: List[str], output_dir: Optional[str] = None,
     Returns:
         List of successfully converted JPG file paths
     """
-    if not HEIC_SUPPORT:
-        raise RuntimeError("HEIC support not available. Install pillow-heif: pip install pillow-heif")
-    
     converted_files = []
     
     for heic_path in heic_files:
@@ -195,11 +176,6 @@ class HEICHandler:
             List of converted JPG file paths
         """
         if not self.heic_files:
-            return []
-        
-        if not HEIC_SUPPORT:
-            print(f"\nFound {len(self.heic_files)} HEIC files, but HEIC support is not available.")
-            print("Install pillow-heif to enable HEIC conversion: pip install pillow-heif")
             return []
         
         print(f"\nFound {len(self.heic_files)} HEIC files.")

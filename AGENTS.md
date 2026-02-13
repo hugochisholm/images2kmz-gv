@@ -294,28 +294,7 @@ class KMZGenerator:
 
 ### Optional Dependencies
 
-For optional features (like HEIC support) that not all users need:
-
-```python
-try:
-    from PIL import Image
-    from pillow_heif import register_heif_opener
-    HEIC_SUPPORT = True
-    register_heif_opener()
-except ImportError:
-    HEIC_SUPPORT = False
-```
-
-Then check `HEIC_SUPPORT` before using the feature:
-
-```python
-def convert_heic_to_jpg(heic_path: str) -> Optional[str]:
-    if not HEIC_SUPPORT:
-        raise RuntimeError("HEIC support not available. Install pillow-heif: pip install pillow-heif")
-    # ... conversion logic
-```
-
-**Rationale:** Core functionality (JPEG processing) works without optional dependencies; users only need to install additional packages for features they use. This keeps the base installation lightweight.
+(Section removed: HEIC support is now mandatory and handled via `pillow-heif` in core requirements.)
 
 ### CLI Exit Codes
 
@@ -518,7 +497,6 @@ xmllint --noout debug_output/doc.kml && echo "Valid KML" || echo "Invalid KML"
 
 **HEIC conversion fails:**
 - Check if `pillow-heif` is installed: `pip list | grep pillow-heif`
-- Verify HEIC support: `python -c "from images2kmz import is_heic_supported; print(is_heic_supported())"`
 - Some HEIC variants (10-bit color) may not be supported
 
 ### Validation Commands

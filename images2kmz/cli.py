@@ -10,7 +10,7 @@ from rich.console import Console
 
 from .core import KMZGenerator
 from .image_processor import ImageProcessor
-from .heic_handler import HEICHandler, is_heic_supported, batch_convert_heic
+from .heic_handler import HEICHandler, batch_convert_heic
 from .utils import get_absolute_path
 from .progress import ProgressBar, create_progress_callback
 
@@ -211,17 +211,13 @@ def run(args: Optional[list] = None) -> int:
     if num_heic > 0:
         if parsed_args.convert_heic:
             # Auto-convert without prompting
-            if is_heic_supported():
-                console.print(f"\n[yellow]Found {num_heic} HEIC file{'s' if num_heic != 1 else ''}[/yellow]")
-                console.print("[dim yellow]Converting HEIC files...[/dim yellow]")
-                batch_convert_heic(
-                    heic_handler.heic_files,
-                    output_dir=input_dir,
-                    move_originals=True
-                )
-            else:
-                console.print(f"\n[yellow]Warning: Found {num_heic} HEIC file{'s' if num_heic != 1 else ''}, but HEIC support not available.[/yellow]")
-                console.print("[yellow]Install pillow-heif to enable conversion: pip install pillow-heif[/yellow]")
+            console.print(f"\n[yellow]Found {num_heic} HEIC file{'s' if num_heic != 1 else ''}[/yellow]")
+            console.print("[dim yellow]Converting HEIC files...[/dim yellow]")
+            batch_convert_heic(
+                heic_handler.heic_files,
+                output_dir=input_dir,
+                move_originals=True
+            )
         else:
             # Prompt user
             heic_handler.prompt_and_convert()

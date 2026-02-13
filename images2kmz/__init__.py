@@ -24,8 +24,7 @@ from .heic_handler import (
     HEICHandler,
     find_heic_files,
     convert_heic_to_jpg,
-    batch_convert_heic,
-    is_heic_supported
+    batch_convert_heic
 )
 from .utils import (
     get_absolute_path,
@@ -52,7 +51,6 @@ __all__ = [
     'find_heic_files',
     'convert_heic_to_jpg',
     'batch_convert_heic',
-    'is_heic_supported',
     # Utilities
     'get_absolute_path',
     'create_file_uri',
