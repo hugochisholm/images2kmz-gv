@@ -7,7 +7,7 @@ A Python tool to create KMZ files from geotagged photos with embedded thumbnails
 - **GPS Extraction**: Automatically extracts GPS coordinates from photo EXIF data
 - **Thumbnail Generation**: Creates 800x600 thumbnails (maintaining aspect ratio) embedded in KMZ
 - **Original Links**: Includes hyperlinks to original photos on your filesystem
-- **HEIC Support**: Optional conversion of HEIC/HEIF files to JPEG
+- **HEIC Support**: Automatic conversion of HEIC/HEIF files to JPEG
 - **Recursive Scanning**: Can search subdirectories for photos
 - **Summary Reports**: Shows statistics about processed photos
 - **Modular Design**: Can be used as a Python module or command-line tool
@@ -21,15 +21,19 @@ A Python tool to create KMZ files from geotagged photos with embedded thumbnails
 pip install -r requirements.txt
 ```
 
-### Optional: HEIC Support
+### Install as a CLI tool
 
-To enable HEIC/HEIF conversion, install the additional dependency:
+To use the `images2kmz` command from anywhere:
 
 ```bash
-pip install pillow-heif
+pip install .
 ```
 
-Or uncomment the `pillow-heif` line in `requirements.txt` and reinstall.
+For development mode (editable install):
+
+```bash
+pip install -e .
+```
 
 ## Usage
 
@@ -50,10 +54,16 @@ You'll be prompted to:
 
 ### Command Line
 
-Basic usage:
+Basic usage (using main.py):
 
 ```bash
 python main.py /path/to/photos
+```
+
+Or if installed as a CLI tool:
+
+```bash
+images2kmz /path/to/photos
 ```
 
 With options:
@@ -163,10 +173,13 @@ When you click on a placemark:
 
 - Python 3.7+
 - GPSPhoto >= 2.2.3
+- ExifRead >= 3.0.0
 - simplekml >= 1.3.6
 - Pillow >= 12.0.0
-- textual >= 0.30.0 (for TUI interface)
-- pillow-heif >= 0.10.0 (optional, for HEIC support)
+- piexif >= 1.1.3
+- pillow-heif >= 0.10.0
+- rich >= 13.0.0
+- textual >= 0.30.0
 
 ## Project Structure
 
@@ -174,14 +187,15 @@ When you click on a placemark:
 images2kmz/
 ├── images2kmz/              # Main package
 │   ├── __init__.py          # Package exports
+│   ├── __main__.py          # Entry point for python -m
 │   ├── cli.py               # Command-line interface
 │   ├── core.py              # KMZ generation engine
 │   ├── image_processor.py   # Image handling (thumbnails, EXIF)
 │   ├── heic_handler.py      # HEIC detection and conversion
-│   ├── utils.py             # Utility functions
-│   └── tui_app.py           # Terminal UI application
+│   ├── progress.py          # Progress bar utilities
+│   └── utils.py             # Utility functions
 ├── main.py                  # Entry point for CLI
-├── tui_main.py              # Entry point for TUI
+├── setup.py                 # Package installation
 ├── requirements.txt         # Python dependencies
 ├── README.md                # This file
 └── .gitignore               # Git ignore patterns
@@ -189,7 +203,7 @@ images2kmz/
 
 ## Limitations
 
-- Only JPEG files are processed (HEIC files must be converted first)
+- Only JPEG and HEIC files are processed
 - Photos without GPS EXIF data are skipped
 - Hyperlinks to original photos use absolute file paths (local filesystem only)
 
