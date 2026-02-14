@@ -16,14 +16,15 @@ class ProgressBar:
     progress with percentage and filename display.
     """
 
-    def __init__(self, description: str):
+    def __init__(self, description: str, console: Optional[Console] = None):
         """
         Initialize progress bar.
 
         Args:
             description: Description text to display (e.g., "Processing")
+            console: Optional Console instance to use for output
         """
-        self.console = Console()
+        self.console = console if console is not None else Console()
         self.progress = RichProgress(
             TextColumn("[cyan]{task.description}[/cyan]"),
             BarColumn(complete_style="green", finished_style="green"),
@@ -51,6 +52,14 @@ class ProgressBar:
     def update(
         self, current: int, total: int, filename: Optional[str] = None
     ) -> None:
+        """
+        Update progress with current count and optional filename.
+
+        Args:
+            current: Current item number
+            total: Total number of items
+            filename: Optional filename being processed
+        """
         task_id = self.task_id
         if task_id is None:
             return

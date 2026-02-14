@@ -519,6 +519,12 @@ start output.kmz          # Windows
 
 **Rationale:** These commands help diagnose issues at each stage of the processing pipeline, making it easier to isolate where failures occur.
 
+## Tool Usage Guidelines
+
+### Context7 MCP
+
+Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask.
+
 ## Additional Notes
 
 - **Python Version:** Requires Python 3.7+ (uses type hints, f-strings, and dict ordering guarantees)

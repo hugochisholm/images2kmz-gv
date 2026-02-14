@@ -73,14 +73,17 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def print_header():
+def print_header(console: Optional[Console] = None) -> None:
     """Print application header."""
-    print("=" * 60)
-    print("images2kmz - Geotagged Photo KMZ Generator")
-    print("=" * 60)
+    if console is None:
+        console = Console()
+    separator = "=" * 60
+    console.print(f"\n[bold magenta]{separator}[/bold magenta]")
+    console.print("[bold cyan]images2kmz - Geotagged Photo KMZ Generator[/bold cyan]")
+    console.print(f"[bold magenta]{separator}[/bold magenta]\n")
 
 
-def prompt_for_directory() -> str:
+def prompt_for_directory(console: Optional[Console] = None) -> str:
     """
     Prompt user to input a directory path for image scanning.
     Supports relative paths, absolute paths, and Windows-style paths.
@@ -89,11 +92,14 @@ def prompt_for_directory() -> str:
     Returns:
         Absolute path to the validated/created directory
     """
+    if console is None:
+        console = Console()
+    
     while True:
         user_input = input('Please provide a directory containing images to process: ').strip()
         
         if not user_input:
-            print('Error: Path cannot be empty. Please try again.')
+            console.print('[bold red]Error: Path cannot be empty. Please try again.[/bold red]')
             continue
         
         # Handle various path formats (relative, absolute, Windows-style)
@@ -106,14 +112,14 @@ def prompt_for_directory() -> str:
             if response in ('y', 'yes'):
                 try:
                     os.makedirs(abs_path, exist_ok=True)
-                    print(f'Created directory: {abs_path}')
+                    console.print(f'[green]Created directory: {abs_path}[/green]')
                     return abs_path
                 except Exception as e:
-                    print(f'Error creating directory: {e}')
-                    print('Please try again.')
+                    console.print(f'[bold red]Error creating directory: {e}[/bold red]')
+                    console.print('[yellow]Please try again.[/yellow]')
                     continue
             else:
-                print('Exiting gracefully.')
+                console.print('[yellow]Exiting gracefully.[/yellow]')
                 sys.exit(0)
         else:
             return abs_path
@@ -188,11 +194,11 @@ def run(args: Optional[list] = None) -> int:
     parsed_args = parser.parse_args(args)
     
     # Print header
-    print_header()
+    print_header(console)
     
     # Handle optional input directory - prompt if not provided
     if parsed_args.input_dir is None:
-        input_dir = prompt_for_directory()
+        input_dir = prompt_for_directory(console)
     else:
         input_dir = get_absolute_path(parsed_args.input_dir)
         if not os.path.isdir(input_dir):
@@ -238,7 +244,7 @@ def run(args: Optional[list] = None) -> int:
         stats = processor.get_stats()
         
         if num_images > 0:
-            progress_bar = ProgressBar("Processing")
+            progress_bar = ProgressBar("Processing", console=console)
             progress_bar.start(num_images)
             try:
                 processed_images = processor.process_directory(
@@ -289,7 +295,7 @@ def run(args: Optional[list] = None) -> int:
     try:
         kmz_gen = KMZGenerator(output_path, thumbnail_size=thumbnail_size)
         
-        kmz_progress = ProgressBar("Adding photos")
+        kmz_progress = ProgressBar("Adding photos", console=console)
         kmz_progress.start(len(processed_images))
         
         # Add all processed images

@@ -15,6 +15,8 @@ setup(
         ],
     },
     author="Hugo Chisholm",
-    description="Create KMZ files from geotagged photos",
+    description="Create KMZ files from geotagged photos with GeoVerra NavPhoto description",
+    url="https://github.com/hugochisholm/images2kmz-gv",
+    license="MIT",
     python_requires='>=3.7',
 )
