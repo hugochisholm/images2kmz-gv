@@ -405,6 +405,12 @@ images2kmz/
 4. Update README.md examples
 5. Ensure backward compatibility or document breaking changes
 
+## Git Workflow Guidelines
+
+### Making Commits
+- **User Confirmation:** Do not make a commit without checking with the user first.
+- **Commit Messages:** Make the commit message a concise but thorough summary of the changes made since the last commit.
+
 ## Testing Guidelines
 
 ### Test Structure

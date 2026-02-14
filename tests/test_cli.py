@@ -293,6 +293,52 @@ class TestRunFunction:
         assert result == 1
         calls = [c for c in self.mock_console.print.call_args_list if "Error generating KMZ file" in str(c)]
         assert len(calls) > 0
+        # Verify cleanup called even on error
+        self.mock_kmz.cleanup.assert_called_once()
+
+    @patch('images2kmz.cli.os.path.isdir')
+    @patch('images2kmz.cli.get_absolute_path')
+    def test_run_keyboard_interrupt(self, mock_abspath, mock_isdir):
+        """Test graceful handling of KeyboardInterrupt."""
+        mock_abspath.return_value = '/valid/path'
+        mock_isdir.return_value = True
+        self.mock_get_files.return_value = ['img1.jpg']
+        
+        # Mock ImageProcessor to raise KeyboardInterrupt during processing
+        self.mock_processor.process_directory.side_effect = KeyboardInterrupt()
+        
+        result = run(['/valid/path'])
+        
+        assert result == 130
+        # Check cancellation message
+        calls = [c for c in self.mock_console.print.call_args_list if "Operation cancelled by user" in str(c)]
+        assert len(calls) > 0
+        
+        # Verify KMZ cleanup was NOT called yet (because it wasn't created yet)
+        self.mock_kmz_cls.assert_not_called()
+
+    @patch('images2kmz.cli.os.path.isdir')
+    @patch('images2kmz.cli.get_absolute_path')
+    def test_run_keyboard_interrupt_during_kmz(self, mock_abspath, mock_isdir):
+        """Test graceful handling of KeyboardInterrupt during KMZ generation."""
+        mock_abspath.return_value = '/valid/path'
+        mock_isdir.return_value = True
+        self.mock_get_files.return_value = ['img1.jpg']
+        
+        # Mock successful processing
+        self.mock_processor.process_directory.return_value = [
+            {'path': 'p', 'gps': 'g', 'thumbnail': 't', 'filename': 'f'}
+        ]
+        self.mock_processor.get_stats.return_value = {'processed': 1, 'skipped_no_gps': 0, 'errors': 0}
+        
+        # Mock KMZ addition to raise KeyboardInterrupt
+        self.mock_kmz.add_photo.side_effect = KeyboardInterrupt()
+        
+        result = run(['/valid/path'])
+        
+        assert result == 130
+        # Verify cleanup was called
+        self.mock_kmz.cleanup.assert_called_once()
 
     @patch('images2kmz.cli.prompt_for_directory')
     def test_run_interactive_mode(self, mock_prompt):

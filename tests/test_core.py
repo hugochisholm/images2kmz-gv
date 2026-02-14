@@ -640,6 +640,7 @@ class TestKMZGeneratorIntegration:
         thumbnail = create_thumbnail(str(test_file), max_size=(400, 300))
         
         if thumbnail:
+            assert test_gps is not None
             generator.add_photo(
                 str(test_file),
                 test_gps,

@@ -129,6 +129,15 @@ class KMZGenerator:
         self.stats['photos_added'] += 1
         self.stats['total_size'] += len(thumbnail_bytes)
     
+    def cleanup(self) -> None:
+        """Clean up temporary files."""
+        for tmp_file in self._temp_files:
+            try:
+                os.unlink(tmp_file)
+            except Exception:
+                pass
+        self._temp_files.clear()
+    
     def save(self) -> str:
         """
         Save the KMZ file.
@@ -147,13 +156,7 @@ class KMZGenerator:
             
             return get_absolute_path(self.output_path)
         finally:
-            # Clean up temporary files
-            for tmp_file in self._temp_files:
-                try:
-                    os.unlink(tmp_file)
-                except Exception:
-                    pass
-            self._temp_files.clear()
+            self.cleanup()
     
     def get_stats(self) -> Dict[str, int]:
         """
