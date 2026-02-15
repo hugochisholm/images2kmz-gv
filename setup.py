@@ -7,7 +7,8 @@ with open('requirements.txt') as f:
 setup(
     name="images2kmz",
     version="0.2.0",
-    packages=find_packages(),
+    package_dir={'': 'src'},
+    packages=find_packages(where='src'),
     install_requires=requirements,
     entry_points={
         'console_scripts': [
@@ -18,5 +19,5 @@ setup(
     description="Create KMZ files from geotagged photos with GeoVerra NavPhoto description",
     url="https://github.com/hugochisholm/images2kmz-gv",
     license="MIT",
-    python_requires='>=3.7',
+    python_requires='>=3.10',
 )

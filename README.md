@@ -1,38 +1,35 @@
 # images2kmz
 
-A Python tool to create KMZ files from geotagged photos with embedded thumbnails and links to original images.
+Python CLI tool for creating KMZ (Google Earth) files from geotagged photos.
 
 ## Features
 
-- **GPS Extraction**: Automatically extracts GPS coordinates from photo EXIF data
-- **Thumbnail Generation**: Creates 800x600 thumbnails (maintaining aspect ratio) embedded in KMZ
-- **Original Links**: Includes hyperlinks to original photos on your filesystem
-- **HEIC Support**: Automatic conversion of HEIC/HEIF files to JPEG
-- **Recursive Scanning**: Can search subdirectories for photos
-- **Summary Reports**: Shows statistics about processed photos
-- **Modular Design**: Can be used as a Python module or command-line tool
+- Create KMZ files from geotagged photos
+- Support for multiple image formats (JPEG, HEIC, PNG)
+- Automatic GPS coordinate extraction
+- Thumbnail generation for Google Earth
+- Progress indicators with rich console output
 
 ## Installation
 
-1. Clone or download this repository
-2. Install dependencies:
+### Prerequisites
+
+- Python 3.10+
+- Virtual environment (located at `./.venv/`)
+
+### Setup
 
 ```bash
-pip install -r requirements.txt
-```
+# Activate the virtual environment
+source ./.venv/bin/activate  # On macOS/Linux
+# OR
+.venv\Scripts\activate  # On Windows
 
-### Install as a CLI tool
-
-To use the `images2kmz` command from anywhere:
-
-```bash
-pip install .
-```
-
-For development mode (editable install):
-
-```bash
+# Install in development mode
 pip install -e .
+
+# Install dev dependencies (optional)
+pip install -r requirements-dev.txt
 ```
 
 ## Usage
@@ -42,7 +39,7 @@ pip install -e .
 Run without arguments for an interactive experience:
 
 ```bash
-python main.py
+python -m images2kmz
 ```
 
 You'll be prompted to:
@@ -54,13 +51,7 @@ You'll be prompted to:
 
 ### Command Line
 
-Basic usage (using main.py):
-
-```bash
-python main.py /path/to/photos
-```
-
-Or if installed as a CLI tool:
+Basic usage:
 
 ```bash
 images2kmz /path/to/photos
@@ -69,10 +60,21 @@ images2kmz /path/to/photos
 With options:
 
 ```bash
-python main.py /path/to/photos -o output.kmz -r --convert-heic
-```
+# Specify output file
+images2kmz /path/to/photos -o output.kmz
 
-**Note:** The KMZ file is now saved in the input directory by default (not the current working directory). Use `-o` to specify a different location.
+# Process recursively
+images2kmz /path/to/photos --recursive -o output.kmz
+
+# Auto-convert HEIC files
+images2kmz /path/to/photos --convert-heic -o output.kmz
+
+# Custom thumbnail size
+images2kmz /path/to/photos --thumbnail-size 1024 768 -o output.kmz
+
+# Show help
+images2kmz --help
+```
 
 #### Command-Line Options
 
@@ -85,37 +87,32 @@ python main.py /path/to/photos -o output.kmz -r --convert-heic
 
 #### Examples
 
-Interactive mode (prompts for directory):
-```bash
-python main.py
-```
-
 Process photos in specified directory:
 ```bash
-python main.py ~/Photos
+images2kmz ~/Photos
 # Output: ~/Photos/photos.kmz
 ```
 
 Process photos recursively:
 ```bash
-python main.py ~/Photos -r
+images2kmz ~/Photos -r
 # Output: ~/Photos/photos.kmz
 ```
 
 Custom output location:
 ```bash
-python main.py ~/Photos -o ~/Desktop/vacation.kmz
+images2kmz ~/Photos -o ~/Desktop/vacation.kmz
 # Output: ~/Desktop/vacation.kmz
 ```
 
 Auto-convert HEIC files:
 ```bash
-python main.py ~/Photos -r --convert-heic
+images2kmz ~/Photos -r --convert-heic
 ```
 
 Custom thumbnail size:
 ```bash
-python main.py ~/Photos --thumbnail-size 1024 768
+images2kmz ~/Photos --thumbnail-size 1024 768
 ```
 
 ### As a Python Module
@@ -169,37 +166,71 @@ When you click on a placemark:
 - The thumbnail image is displayed
 - A link to the original photo allows you to open the full-resolution image
 
-## Requirements
-
-- Python 3.7+
-- GPSPhoto >= 2.2.3
-- ExifRead >= 3.0.0
-- simplekml >= 1.3.6
-- Pillow >= 12.0.0
-- piexif >= 1.1.3
-- pillow-heif >= 0.10.0
-- rich >= 13.0.0
-- textual >= 0.30.0
-
 ## Project Structure
+
+The project uses a modern src layout:
 
 ```
 images2kmz/
-├── images2kmz/              # Main package
-│   ├── __init__.py          # Package exports
-│   ├── __main__.py          # Entry point for python -m
-│   ├── cli.py               # Command-line interface
-│   ├── core.py              # KMZ generation engine
-│   ├── image_processor.py   # Image handling (thumbnails, EXIF)
-│   ├── heic_handler.py      # HEIC detection and conversion
-│   ├── progress.py          # Progress bar utilities
-│   └── utils.py             # Utility functions
-├── main.py                  # Entry point for CLI
-├── setup.py                 # Package installation
-├── requirements.txt         # Python dependencies
-├── README.md                # This file
-└── .gitignore               # Git ignore patterns
+├── src/
+│   └── images2kmz/        # Source code
+│       ├── __init__.py    # Package exports
+│       ├── __main__.py    # Entry point for python -m
+│       ├── cli.py         # Command-line interface
+│       ├── core.py        # KMZ generation engine
+│       ├── image_processor.py   # Image handling (thumbnails, EXIF)
+│       ├── heic_handler.py      # HEIC detection and conversion
+│       ├── progress.py          # Progress bar utilities
+│       └── utils.py             # Utility functions
+├── tests/                 # Test suite
+├── setup.py               # Package configuration
+├── README.md
+└── requirements*.txt
 ```
+
+## Development
+
+### Running Tests
+
+**Note: All commands must be run through the virtual environment at `./.venv/`:**
+
+```bash
+# Activate the virtual environment
+source ./.venv/bin/activate  # On macOS/Linux
+# OR
+.venv\Scripts\activate  # On Windows
+
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=images2kmz
+
+# Run specific test file
+pytest tests/test_core.py
+```
+
+### Code Style
+
+This project follows modern Python 3.10+ standards:
+
+- Type hints using `X | None` instead of `Optional[X]`
+- `pathlib.Path` for all file operations
+- `from __future__ import annotations` for forward references
+- Rich console for styled output
+
+See [AGENTS.md](AGENTS.md) for detailed coding standards and guidelines.
+
+## Requirements
+
+- Python 3.10+
+- GPSPhoto >= 2.2.3
+- Pillow >= 12.0.0
+- simplekml >= 1.3.6
+- rich >= 13.0.0
+- textual >= 0.30.0
+- piexif >= 1.1.3
+- pillow-heif >= 0.10.0
 
 ## Limitations
 

@@ -156,48 +156,32 @@ except Exception as e:
     return False
 ```
 
-### Project Structure (Current Flat Layout)
-```
-images2kmz/
-├── __init__.py          # Package init
-├── __main__.py          # python -m images2kmz entry point
-├── cli.py               # CLI interface (argparse + rich)
-├── core.py              # Core KMZGenerator class
-├── image_processor.py   # Image processing (GPS extraction, thumbnails)
-├── heic_handler.py      # HEIC format conversion
-├── progress.py          # Progress display utilities
-└── utils.py             # Utility functions (paths, formatting)
+### Project Structure (Modern src Layout)
 
-tests/
-├── conftest.py          # pytest fixtures
-├── test_core.py         # Core functionality tests
-├── test_cli.py          # CLI tests
-├── test_image_processor.py
-├── test_heic_handler.py
-├── test_progress.py
-└── test_utils.py
-```
+The project uses the modern src layout structure:
 
-### Project Structure (Modern src Layout - Recommended)
-Consider migrating to:
 ```
 images2kmz/
 ├── src/
-│   └── images2kmz/
-│       ├── __init__.py
-│       ├── __main__.py
-│       ├── cli.py
-│       ├── core.py
-│       ├── image_processor.py
-│       ├── heic_handler.py
-│       ├── progress.py
-│       └── utils.py
+│   └── images2kmz/        # Source package
+│       ├── __init__.py    # Package init
+│       ├── __main__.py    # python -m images2kmz entry point
+│       ├── cli.py         # CLI interface (argparse + rich)
+│       ├── core.py        # Core KMZGenerator class
+│       ├── image_processor.py   # Image processing (GPS extraction, thumbnails)
+│       ├── heic_handler.py      # HEIC format conversion
+│       ├── progress.py          # Progress display utilities
+│       └── utils.py             # Utility functions (paths, formatting)
 ├── tests/
-│   ├── conftest.py
-│   ├── test_core.py
-│   └── ...
-├── pyproject.toml       # Modern config (migrate from setup.py)
-├── setup.py             # Legacy (keep for now)
+│   ├── conftest.py        # pytest fixtures
+│   ├── test_core.py       # Core functionality tests
+│   ├── test_cli.py        # CLI tests
+│   ├── test_image_processor.py
+│   ├── test_heic_handler.py
+│   ├── test_progress.py
+│   └── test_utils.py
+├── setup.py               # Package configuration
+├── README.md
 └── requirements*.txt
 ```
 

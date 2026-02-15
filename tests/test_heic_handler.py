@@ -355,10 +355,10 @@ class TestHEICHandler:
 class TestHEICIntegration:
     """Integration tests using real HEIC files."""
 
-    @pytest.fixture
-    def sample_heic_dir(self):
-        """Fixture providing path to sample HEIC files."""
-        return Path(__file__).parent.parent / "sample-images"
+@pytest.fixture
+def sample_heic_dir() -> Path:
+    """Return path to sample HEIC files for integration tests."""
+    return Path(__file__).parent / "fixtures" / "sample-images"
 
     def test_find_heic_files_with_real_files(self, sample_heic_dir):
         """
@@ -384,7 +384,7 @@ class TestHEICIntegration:
         if not sample_heic_dir.exists():
             pytest.skip("Sample images directory not found")
 
-        heic_files = list(sample_heic_dir.glob("*.heic"))
+        heic_files = list(sample_heic_dir.rglob("*.heic"))
         if not heic_files:
             pytest.skip("No HEIC files found in sample directory")
 
@@ -424,7 +424,7 @@ class TestHEICIntegration:
         if not sample_heic_dir.exists():
             pytest.skip("Sample images directory not found")
 
-        heic_files = list(sample_heic_dir.glob("*.heic"))[:2]  # First 2 files
+        heic_files = list(sample_heic_dir.rglob("*.heic"))[:2]  # First 2 files
         if len(heic_files) < 2:
             pytest.skip("Need at least 2 HEIC files for batch test")
 
