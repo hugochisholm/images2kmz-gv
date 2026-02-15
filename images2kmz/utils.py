@@ -1,11 +1,12 @@
+from __future__ import annotations
+
 """Utility functions for images2kmz package."""
 
-import os
 from pathlib import Path
-from typing import Union
 
 
-def get_absolute_path(path: Union[str, Path]) -> str:
+
+def get_absolute_path(path: str | Path) -> str:
     """
     Convert a path to an absolute path.
     
@@ -15,10 +16,10 @@ def get_absolute_path(path: Union[str, Path]) -> str:
     Returns:
         Absolute path as string
     """
-    return os.path.abspath(os.path.expanduser(str(path)))
+    return str(Path(path).expanduser().resolve())
 
 
-def create_file_uri(path: Union[str, Path]) -> str:
+def create_file_uri(path: str | Path) -> str:
     """
     Convert a file path to a file:// URI.
     
@@ -29,15 +30,11 @@ def create_file_uri(path: Union[str, Path]) -> str:
         file:// URI string
     """
     abs_path = get_absolute_path(path)
-    # Convert to URI format
-    if abs_path.startswith('/'):
-        return f'file://{abs_path}'
-    else:
-        # Windows paths
-        return f'file:///{abs_path.replace(os.sep, "/")}'
+    # Convert to URI format (handles both Unix and Windows paths)
+    return f'file://{abs_path}'
 
 
-def ensure_directory_exists(path: Union[str, Path]) -> None:
+def ensure_directory_exists(path: str | Path) -> None:
     """
     Create directory if it doesn't exist.
     

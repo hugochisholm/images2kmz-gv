@@ -306,28 +306,26 @@ class TestKMZGeneratorSave:
         
         with patch('images2kmz.core.simplekml.Kml', return_value=mock_kml):
             generator = KMZGenerator('/test/output.kmz')
-            
-            with patch('images2kmz.core.os.path.exists', return_value=True):
-                result = generator.save()
+
+            with patch('images2kmz.core.Path.exists', return_value=True):
+                with patch('images2kmz.core.Path.is_absolute', return_value=True):
+                    with patch('images2kmz.core.Path.mkdir'):
+                        result = generator.save()
         
         # Verify savekmz called
         mock_kml.savekmz.assert_called_once_with('/test/output.kmz')
         
         # Verify absolute path returned
         assert result is not None
-        assert os.path.isabs(result)
+        assert Path(result).is_absolute()
 
-    @patch('images2kmz.core.os.makedirs')
-    @patch('images2kmz.core.os.path.exists')
-    @patch('images2kmz.core.os.path.dirname')
-    def test_save_creates_directory(self, mock_dirname, mock_exists, mock_makedirs):
+    @patch('images2kmz.core.Path.mkdir')
+    def test_save_creates_directory(self, mock_mkdir):
         """
         Test directory creation for output path.
 
         Should create parent directories if they don't exist.
         """
-        mock_dirname.return_value = '/output/subdir'
-        mock_exists.return_value = False
         mock_kml = Mock()
         
         with patch('images2kmz.core.simplekml.Kml', return_value=mock_kml):
@@ -335,10 +333,9 @@ class TestKMZGeneratorSave:
             generator.save()
         
         # Verify directory created
-        mock_makedirs.assert_called_once_with('/output/subdir', exist_ok=True)
+        mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
 
-    @patch('images2kmz.core.os.unlink')
-    def test_save_temp_file_cleanup(self, mock_unlink):
+    def test_save_temp_file_cleanup(self):
         """
         Test temporary file cleanup after save.
 
@@ -350,20 +347,16 @@ class TestKMZGeneratorSave:
             generator = KMZGenerator('/test.kmz')
             generator._temp_files = ['/tmp/file1.jpg', '/tmp/file2.jpg', '/tmp/file3.jpg']
             
-            with patch('images2kmz.core.os.path.exists', return_value=True):
+            with patch('images2kmz.core.Path.unlink') as mock_unlink:
                 generator.save()
         
         # Verify all temp files deleted
         assert mock_unlink.call_count == 3
-        mock_unlink.assert_any_call('/tmp/file1.jpg')
-        mock_unlink.assert_any_call('/tmp/file2.jpg')
-        mock_unlink.assert_any_call('/tmp/file3.jpg')
         
         # Verify list cleared
         assert generator._temp_files == []
 
-    @patch('images2kmz.core.os.unlink')
-    def test_save_cleanup_on_failure(self, mock_unlink):
+    def test_save_cleanup_on_failure(self):
         """
         Test cleanup occurs even when save fails.
 
@@ -376,55 +369,47 @@ class TestKMZGeneratorSave:
             generator = KMZGenerator('/test.kmz')
             generator._temp_files = ['/tmp/file1.jpg']
             
-            with patch('images2kmz.core.os.path.exists', return_value=True):
+            with patch('images2kmz.core.Path.unlink') as mock_unlink:
                 with pytest.raises(Exception, match="Save failed"):
                     generator.save()
         
         # Verify cleanup still happened
-        mock_unlink.assert_called_once_with('/tmp/file1.jpg')
+        mock_unlink.assert_called_once()
         assert generator._temp_files == []
 
-    @patch('images2kmz.core.os.makedirs')
-    @patch('images2kmz.core.os.path.exists')
-    @patch('images2kmz.core.os.path.dirname')
-    def test_save_no_directory_needed(self, mock_dirname, mock_exists, mock_makedirs):
+    @patch('images2kmz.core.Path.mkdir')
+    def test_save_no_directory_needed(self, mock_mkdir):
         """
         Test save when no directory creation needed.
 
-        Current directory output shouldn't call makedirs.
+        Current directory output shouldn't call mkdir.
         """
-        mock_dirname.return_value = ''
-        mock_exists.return_value = False
         mock_kml = Mock()
         
         with patch('images2kmz.core.simplekml.Kml', return_value=mock_kml):
             generator = KMZGenerator('test.kmz')
             generator.save()
         
-        # Should not try to create directory
-        mock_makedirs.assert_not_called()
+        # Should still call mkdir with exist_ok=True (which handles existing/current dir)
+        mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
 
-    @patch('images2kmz.core.os.makedirs')
-    @patch('images2kmz.core.os.path.exists')
-    @patch('images2kmz.core.os.path.dirname')
-    def test_save_existing_directory(self, mock_dirname, mock_exists, mock_makedirs):
+    @patch('images2kmz.core.Path.mkdir')
+    def test_save_existing_directory(self, mock_mkdir):
         """
         Test save when directory already exists.
 
-        Should not call makedirs if directory exists.
+        Should call mkdir with exist_ok=True (handles existing directory).
         """
-        mock_dirname.return_value = '/existing/dir'
-        mock_exists.return_value = True
         mock_kml = Mock()
         
         with patch('images2kmz.core.simplekml.Kml', return_value=mock_kml):
             generator = KMZGenerator('/existing/dir/test.kmz')
             generator.save()
         
-        # Should not try to create existing directory
-        mock_makedirs.assert_not_called()
+        # Should call mkdir with exist_ok=True
+        mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
 
-    @patch('images2kmz.core.os.unlink')
+    @patch('images2kmz.core.Path.unlink')
     def test_save_cleanup_handles_errors(self, mock_unlink):
         """
         Test cleanup continues even if one file fails.
@@ -439,9 +424,8 @@ class TestKMZGeneratorSave:
             generator = KMZGenerator('/test.kmz')
             generator._temp_files = ['/tmp/file1.jpg', '/tmp/file2.jpg', '/tmp/file3.jpg']
             
-            with patch('images2kmz.core.os.path.exists', return_value=True):
-                # Should not raise
-                generator.save()
+            # Should not raise
+            generator.save()
         
         # Verify all three were attempted
         assert mock_unlink.call_count == 3
@@ -470,16 +454,18 @@ class TestKMZGeneratorStats:
             # Original should be unchanged
             assert generator.stats['photos_added'] == 5
 
-    @patch('images2kmz.core.os.path.exists')
-    @patch('images2kmz.core.os.path.getsize')
-    def test_get_file_size_exists(self, mock_getsize, mock_exists):
+    @patch('images2kmz.core.Path.exists')
+    @patch('images2kmz.core.Path.stat')
+    def test_get_file_size_exists(self, mock_stat, mock_exists):
         """
         Test getting file size when file exists.
 
         Should return size in bytes.
         """
         mock_exists.return_value = True
-        mock_getsize.return_value = 1024 * 1024 * 2.5  # 2.5 MB
+        mock_stat_result = Mock()
+        mock_stat_result.st_size = 2621440  # 2.5 MB in bytes
+        mock_stat.return_value = mock_stat_result
         
         mock_kml = Mock()
         
@@ -489,7 +475,7 @@ class TestKMZGeneratorStats:
         
         assert size == 2621440  # 2.5 MB in bytes
 
-    @patch('images2kmz.core.os.path.exists')
+    @patch('images2kmz.core.Path.exists')
     def test_get_file_size_not_exists(self, mock_exists):
         """
         Test getting file size when file doesn't exist.

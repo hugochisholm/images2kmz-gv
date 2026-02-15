@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 """Core KMZ generation engine."""
 
-import os
 import tempfile
-from typing import Dict, Optional, Tuple, List, Callable
+from collections.abc import Callable
+from pathlib import Path
+
 import simplekml
 
 from .image_processor import GPSData
@@ -20,8 +23,8 @@ class KMZGenerator:
     def __init__(
         self,
         output_path: str,
-        thumbnail_size: Tuple[int, int] = (800, 600),
-        progress_callback: Optional[Callable[[int, int, str], None]] = None,
+        thumbnail_size: tuple[int, int] = (800, 600),
+        progress_callback: Callable[[int, int, str], None] | None = None,
     ):
         """
         Initialize KMZ generator.
@@ -39,12 +42,12 @@ class KMZGenerator:
             'photos_added': 0,
             'total_size': 0
         }
-        self._temp_files: List[str] = []  # Track temp files to clean up later
+        self._temp_files: list[str] = []  # Track temp files to clean up later
     
     def add_photo(self, photo_path: str, gps_data: GPSData, 
-                  thumbnail_bytes: bytes, name: Optional[str] = None,
-                  description_text: Optional[str] = None,
-                  bearing: Optional[Dict] = None) -> None:
+                  thumbnail_bytes: bytes, name: str | None = None,
+                  description_text: str | None = None,
+                  bearing: dict | None = None) -> None:
         """
         Add a photo to the KMZ file.
         
@@ -58,7 +61,7 @@ class KMZGenerator:
         """
         # Use filename as default name
         if name is None:
-            name = os.path.basename(photo_path)
+            name = Path(photo_path).name
         
         # Get absolute path to original
         abs_photo_path = get_absolute_path(photo_path)
@@ -133,7 +136,7 @@ class KMZGenerator:
         """Clean up temporary files."""
         for tmp_file in self._temp_files:
             try:
-                os.unlink(tmp_file)
+                Path(tmp_file).unlink(missing_ok=True)
             except Exception:
                 pass
         self._temp_files.clear()
@@ -147,9 +150,8 @@ class KMZGenerator:
         """
         try:
             # Ensure output directory exists
-            output_dir = os.path.dirname(self.output_path)
-            if output_dir and not os.path.exists(output_dir):
-                os.makedirs(output_dir, exist_ok=True)
+            output_path = Path(self.output_path)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
             
             # Save as KMZ (compressed KML with embedded files)
             self.kml.savekmz(self.output_path)
@@ -158,7 +160,7 @@ class KMZGenerator:
         finally:
             self.cleanup()
     
-    def get_stats(self) -> Dict[str, int]:
+    def get_stats(self) -> dict[str, int]:
         """
         Get generation statistics.
         
@@ -167,18 +169,19 @@ class KMZGenerator:
         """
         return self.stats.copy()
     
-    def get_file_size(self) -> Optional[int]:
+    def get_file_size(self) -> int | None:
         """
         Get size of generated KMZ file.
         
         Returns:
             File size in bytes, or None if file doesn't exist yet
         """
-        if os.path.exists(self.output_path):
-            return os.path.getsize(self.output_path)
+        output_path = Path(self.output_path)
+        if output_path.exists():
+            return output_path.stat().st_size
         return None
     
-    def get_formatted_file_size(self) -> Optional[str]:
+    def get_formatted_file_size(self) -> str | None:
         """
         Get formatted size of generated KMZ file.
         

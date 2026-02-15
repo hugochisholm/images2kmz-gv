@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 """Image processing functions for extracting GPS data and creating thumbnails."""
 
-import os
-from pathlib import Path
-from typing import Optional, Tuple, List, Dict, Callable
+from dataclasses import dataclass
 from io import BytesIO
+from pathlib import Path
+from collections.abc import Callable
 
 from PIL import Image
 from GPSPhoto import gpsphoto
@@ -13,19 +15,19 @@ from GPSPhoto import gpsphoto
 SUPPORTED_FORMATS = ('.jpg', '.jpeg')
 
 
+@dataclass
 class GPSData:
     """Container for GPS coordinates."""
     
-    def __init__(self, latitude: float, longitude: float, altitude: Optional[float] = None):
-        self.latitude = latitude
-        self.longitude = longitude
-        self.altitude = altitude
+    latitude: float
+    longitude: float
+    altitude: float | None = None
     
     def __repr__(self) -> str:
         return f"GPSData(lat={self.latitude}, lon={self.longitude}, alt={self.altitude})"
 
 
-def extract_gps_data(image_path: str) -> Optional[GPSData]:
+def extract_gps_data(image_path: str) -> GPSData | None:
     """
     Extract GPS coordinates from image EXIF data.
     
@@ -51,7 +53,7 @@ def extract_gps_data(image_path: str) -> Optional[GPSData]:
         return None
 
 
-def create_thumbnail(image_path: str, max_size: Tuple[int, int] = (800, 600)) -> bytes:
+def create_thumbnail(image_path: str, max_size: tuple[int, int] = (800, 600)) -> bytes:
     """
     Create a thumbnail of an image while maintaining aspect ratio.
     
@@ -83,7 +85,7 @@ def create_thumbnail(image_path: str, max_size: Tuple[int, int] = (800, 600)) ->
         return buffer.getvalue()
 
 
-def extract_custom_pin_name(image_path: str, fallback_name: str) -> Tuple[str, Optional[str]]:
+def extract_custom_pin_name(image_path: str, fallback_name: str) -> tuple[str, str | None]:
     """
     Extract custom pin name and description from EXIF ImageDescription.
     
@@ -148,7 +150,7 @@ def extract_custom_pin_name(image_path: str, fallback_name: str) -> Tuple[str, O
         return fallback_name, None
 
 
-def get_compass_bearing(image_path: str) -> Optional[Dict]:
+def get_compass_bearing(image_path: str) -> dict | None:
     """
     Extract compass bearing from EXIF GPS image direction data.
     
@@ -272,7 +274,7 @@ def is_supported_format(file_path: str) -> bool:
     return file_path.lower().endswith(SUPPORTED_FORMATS)
 
 
-def get_image_files(directory: str, recursive: bool = False) -> List[str]:
+def get_image_files(directory: str, recursive: bool = False) -> list[str]:
     """
     Get list of supported image files in a directory.
     
@@ -284,30 +286,29 @@ def get_image_files(directory: str, recursive: bool = False) -> List[str]:
         List of absolute paths to image files
     """
     image_files = []
-    
+    dir_path = Path(directory)
+
     if recursive:
-        # Walk directory tree
-        for root, _, files in os.walk(directory):
-            for filename in files:
-                if is_supported_format(filename):
-                    image_files.append(os.path.join(root, filename))
+        # Walk directory tree using pathlib
+        for file_path in dir_path.rglob('*'):
+            if file_path.is_file() and is_supported_format(str(file_path)):
+                image_files.append(str(file_path))
     else:
         # Only top-level directory
         try:
-            for item in os.listdir(directory):
-                path = os.path.join(directory, item)
-                if os.path.isfile(path) and is_supported_format(item):
-                    image_files.append(path)
+            for file_path in dir_path.iterdir():
+                if file_path.is_file() and is_supported_format(file_path.name):
+                    image_files.append(str(file_path))
         except (PermissionError, FileNotFoundError):
             pass
-    
+
     return sorted(image_files)
 
 
 class ImageProcessor:
     """High-level image processing coordinator."""
     
-    def __init__(self, thumbnail_size: Tuple[int, int] = (800, 600)):
+    def __init__(self, thumbnail_size: tuple[int, int] = (800, 600)):
         """
         Initialize image processor.
         
@@ -326,8 +327,8 @@ class ImageProcessor:
         self,
         directory: str,
         recursive: bool = False,
-        progress_callback: Optional[Callable[[int, int, str], None]] = None,
-    ) -> List[Dict]:
+        progress_callback: Callable[[int, int, str], None] | None = None,
+    ) -> list[dict]:
         """
         Process all images in a directory.
         
@@ -366,7 +367,7 @@ class ImageProcessor:
                 thumbnail_bytes = create_thumbnail(image_path, self.thumbnail_size)
                 
                 # Get filename
-                filename = os.path.basename(image_path)
+                filename = Path(image_path).name
                 
                 # Extract custom pin name and description from EXIF
                 custom_name, description_text = extract_custom_pin_name(image_path, filename)
@@ -397,6 +398,6 @@ class ImageProcessor:
         
         return processed_images
     
-    def get_stats(self) -> Dict[str, int]:
+    def get_stats(self) -> dict[str, int]:
         """Get processing statistics."""
         return self.stats.copy()

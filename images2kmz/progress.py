@@ -1,6 +1,10 @@
+from __future__ import annotations
+
 """Progress bar utilities using rich library."""
 
-from typing import Optional, Callable
+
+from collections.abc import Callable
+
 from rich.progress import (
     Progress as RichProgress,
     BarColumn,
@@ -16,7 +20,7 @@ class ProgressBar:
     progress with percentage and filename display.
     """
 
-    def __init__(self, description: str, console: Optional[Console] = None):
+    def __init__(self, description: str, console: Console | None = None):
         """
         Initialize progress bar.
 
@@ -50,7 +54,7 @@ class ProgressBar:
             self.started = True
 
     def update(
-        self, current: int, total: int, filename: Optional[str] = None
+        self, current: int, total: int, filename: str | None = None
     ) -> None:
         """
         Update progress with current count and optional filename.
@@ -87,7 +91,7 @@ def create_progress_callback(progress_bar: ProgressBar) -> Callable:
         Callback function with signature: callback(current, total, filename)
     """
 
-    def callback(current: int, total: int, filename: Optional[str] = None) -> None:
+    def callback(current: int, total: int, filename: str | None = None) -> None:
         progress_bar.update(current, total, filename)
 
     return callback

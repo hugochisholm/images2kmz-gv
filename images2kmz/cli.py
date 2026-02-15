@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 """Command-line interface for images2kmz."""
 
 import argparse
-import os
 import sys
 from datetime import datetime
-from typing import Optional, Dict
+from pathlib import Path
 
 from rich.console import Console
 
@@ -73,7 +74,7 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def print_header(console: Optional[Console] = None) -> None:
+def print_header(console: Console | None = None) -> None:
     """Print application header."""
     if console is None:
         console = Console()
@@ -83,7 +84,7 @@ def print_header(console: Optional[Console] = None) -> None:
     console.print(f"[bold magenta]{separator}[/bold magenta]\n")
 
 
-def prompt_for_directory(console: Optional[Console] = None) -> str:
+def prompt_for_directory(console: Console | None = None) -> str:
     """
     Prompt user to input a directory path for image scanning.
     Supports relative paths, absolute paths, and Windows-style paths.
@@ -105,13 +106,13 @@ def prompt_for_directory(console: Optional[Console] = None) -> str:
         # Handle various path formats (relative, absolute, Windows-style)
         abs_path = get_absolute_path(user_input)
         
-        if not os.path.isdir(abs_path):
+        if not Path(abs_path).is_dir():
             # Directory doesn't exist - ask user if they want to create it
             response = input(f'Directory does not exist: {abs_path}. Create it? (y/n): ').strip().lower()
             
             if response in ('y', 'yes'):
                 try:
-                    os.makedirs(abs_path, exist_ok=True)
+                    Path(abs_path).mkdir(parents=True, exist_ok=True)
                     console.print(f'[green]Created directory: {abs_path}[/green]')
                     return abs_path
                 except Exception as e:
@@ -126,10 +127,10 @@ def prompt_for_directory(console: Optional[Console] = None) -> str:
 
 
 def print_summary(
-    processor_stats: Dict,
-    kmz_generator: Optional[KMZGenerator],
-    output_path: Optional[str],
-    console: Optional[Console] = None,
+    processor_stats: dict,
+    kmz_generator: KMZGenerator | None,
+    output_path: str | None,
+    console: Console | None = None,
 ):
     """
     Print processing summary with colored output.
@@ -166,9 +167,9 @@ def print_summary(
     if processed > 0 and kmz_generator and output_path:
         file_size = kmz_generator.get_formatted_file_size()
         if file_size:
-            console.print(f"[green]📦 Output: {os.path.basename(output_path)} ({file_size})[/green]")
+            console.print(f"[green]📦 Output: {Path(output_path).name} ({file_size})[/green]")
         else:
-            console.print(f"[green]📦 Output: {os.path.basename(output_path)}[/green]")
+            console.print(f"[green]📦 Output: {Path(output_path).name}[/green]")
         console.print(f"   [dim]Path: {output_path}[/dim]")
     else:
         console.print("\n[bold yellow]⚠ No photos with GPS data found. KMZ file not created.[/bold yellow]")
@@ -176,7 +177,7 @@ def print_summary(
     console.print(f"[bold magenta]{separator}[/bold magenta]\n")
 
 
-def run(args: Optional[list] = None) -> int:
+def run(args: list | None = None) -> int:
     """
     Run the CLI application.
     
@@ -203,7 +204,7 @@ def run(args: Optional[list] = None) -> int:
             input_dir = prompt_for_directory(console)
         else:
             input_dir = get_absolute_path(parsed_args.input_dir)
-            if not os.path.isdir(input_dir):
+            if not Path(input_dir).is_dir():
                 console.print(f"\n[bold red]Error: Input directory does not exist: {input_dir}[/bold red]")
                 return 1
         
@@ -289,7 +290,7 @@ def run(args: Optional[list] = None) -> int:
         # If -o flag wasn't explicitly provided, use input_dir as default location
         if parsed_args.output == 'photos.kmz':  # Check if using default value
             # No explicit -o provided, use input directory as output location
-            output_path = get_absolute_path(os.path.join(input_dir, parsed_args.output))
+            output_path = get_absolute_path(Path(input_dir) / parsed_args.output)
         else:
             # Explicit -o provided, use as specified (could be relative or absolute)
             output_path = get_absolute_path(parsed_args.output)
@@ -311,7 +312,7 @@ def run(args: Optional[list] = None) -> int:
                         bearing=img_data.get('bearing'),
                     )
                     
-                    filename = os.path.basename(img_data['path'])
+                    filename = Path(img_data['path']).name
                     kmz_progress.update(index, len(processed_images), filename)
             finally:
                 kmz_progress.finish()

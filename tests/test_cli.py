@@ -50,7 +50,7 @@ class TestPromptForDirectory:
 
     @patch('builtins.input')
     @patch('images2kmz.cli.get_absolute_path')
-    @patch('images2kmz.cli.os.path.isdir')
+    @patch('images2kmz.cli.Path.is_dir')
     def test_prompt_for_directory_valid(self, mock_isdir, mock_abspath, mock_input):
         """Test providing a valid existing directory."""
         mock_input.return_value = '/valid/path'
@@ -67,9 +67,9 @@ class TestPromptForDirectory:
 
     @patch('builtins.input')
     @patch('images2kmz.cli.get_absolute_path')
-    @patch('images2kmz.cli.os.path.isdir')
-    @patch('images2kmz.cli.os.makedirs')
-    def test_prompt_for_directory_create(self, mock_makedirs, mock_isdir, mock_abspath, mock_input):
+    @patch('images2kmz.cli.Path.is_dir')
+    @patch('images2kmz.cli.Path.mkdir')
+    def test_prompt_for_directory_create(self, mock_mkdir, mock_isdir, mock_abspath, mock_input):
         """Test creating a non-existent directory."""
         # Sequence: path input -> confirmation 'y'
         mock_input.side_effect = ['/new/path', 'y']
@@ -81,11 +81,11 @@ class TestPromptForDirectory:
         result = prompt_for_directory(mock_console)
         
         assert result == '/abs/new/path'
-        mock_makedirs.assert_called_once_with('/abs/new/path', exist_ok=True)
+        mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
 
     @patch('builtins.input')
     @patch('images2kmz.cli.get_absolute_path')
-    @patch('images2kmz.cli.os.path.isdir')
+    @patch('images2kmz.cli.Path.is_dir')
     @patch('images2kmz.cli.sys.exit')
     def test_prompt_for_directory_cancel(self, mock_exit, mock_isdir, mock_abspath, mock_input):
         """Test cancelling directory creation."""
@@ -105,7 +105,7 @@ class TestPromptForDirectory:
 
     @patch('builtins.input')
     @patch('images2kmz.cli.get_absolute_path')
-    @patch('images2kmz.cli.os.path.isdir')
+    @patch('images2kmz.cli.Path.is_dir')
     def test_prompt_for_directory_empty_then_valid(self, mock_isdir, mock_abspath, mock_input):
         """Test handling empty input retry."""
         # Sequence: empty -> valid path
@@ -167,7 +167,7 @@ class TestRunFunction:
         self.mock_get_files_patch.stop()
         self.mock_progress_patch.stop()
 
-    @patch('images2kmz.cli.os.path.isdir')
+    @patch('images2kmz.cli.Path.is_dir')
     @patch('images2kmz.cli.get_absolute_path')
     def test_run_input_dir_not_found(self, mock_abspath, mock_isdir):
         """Test error when input directory doesn't exist."""
@@ -181,7 +181,7 @@ class TestRunFunction:
         calls = [c for c in self.mock_console.print.call_args_list if "Error: Input directory does not exist" in str(c)]
         assert len(calls) > 0
 
-    @patch('images2kmz.cli.os.path.isdir')
+    @patch('images2kmz.cli.Path.is_dir')
     @patch('images2kmz.cli.get_absolute_path')
     def test_run_success_no_images(self, mock_abspath, mock_isdir):
         """Test workflow when no images found."""
@@ -203,7 +203,7 @@ class TestRunFunction:
         calls = [c for c in self.mock_console.print.call_args_list if "No photos with GPS data found" in str(c)]
         assert len(calls) > 0
 
-    @patch('images2kmz.cli.os.path.isdir')
+    @patch('images2kmz.cli.Path.is_dir')
     @patch('images2kmz.cli.get_absolute_path')
     def test_run_success_with_images(self, mock_abspath, mock_isdir):
         """Test full successful workflow with images."""
@@ -252,7 +252,7 @@ class TestRunFunction:
         assert self.mock_kmz.add_photo.call_count == 2
         self.mock_kmz.save.assert_called_once()
 
-    @patch('images2kmz.cli.os.path.isdir')
+    @patch('images2kmz.cli.Path.is_dir')
     @patch('images2kmz.cli.get_absolute_path')
     @patch('images2kmz.cli.batch_convert_heic')
     def test_run_with_heic_conversion(self, mock_batch_convert, mock_abspath, mock_isdir):
@@ -271,7 +271,7 @@ class TestRunFunction:
         assert result == 0
         mock_batch_convert.assert_called_once()
 
-    @patch('images2kmz.cli.os.path.isdir')
+    @patch('images2kmz.cli.Path.is_dir')
     @patch('images2kmz.cli.get_absolute_path')
     def test_run_kmz_save_error(self, mock_abspath, mock_isdir):
         """Test error handling during KMZ save."""
@@ -296,7 +296,7 @@ class TestRunFunction:
         # Verify cleanup called even on error
         self.mock_kmz.cleanup.assert_called_once()
 
-    @patch('images2kmz.cli.os.path.isdir')
+    @patch('images2kmz.cli.Path.is_dir')
     @patch('images2kmz.cli.get_absolute_path')
     def test_run_keyboard_interrupt(self, mock_abspath, mock_isdir):
         """Test graceful handling of KeyboardInterrupt."""
@@ -317,7 +317,7 @@ class TestRunFunction:
         # Verify KMZ cleanup was NOT called yet (because it wasn't created yet)
         self.mock_kmz_cls.assert_not_called()
 
-    @patch('images2kmz.cli.os.path.isdir')
+    @patch('images2kmz.cli.Path.is_dir')
     @patch('images2kmz.cli.get_absolute_path')
     def test_run_keyboard_interrupt_during_kmz(self, mock_abspath, mock_isdir):
         """Test graceful handling of KeyboardInterrupt during KMZ generation."""
