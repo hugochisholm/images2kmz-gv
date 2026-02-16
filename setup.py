@@ -6,7 +6,7 @@ with open('requirements.txt') as f:
 
 setup(
     name="images2kmz",
-    version="0.2.0",
+    version="0.3.0",
     package_dir={'': 'src'},
     packages=find_packages(where='src'),
     install_requires=requirements,

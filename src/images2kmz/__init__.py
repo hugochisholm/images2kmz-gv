@@ -6,7 +6,7 @@ extract GPS coordinates, create thumbnails, and generate KMZ files
 suitable for viewing in Google Earth and other mapping applications.
 """
 
-__version__ = '0.2.0'
+__version__ = '0.3.0'
 __author__ = 'Hugo Chisholm'
 __license__ = 'MIT'
 

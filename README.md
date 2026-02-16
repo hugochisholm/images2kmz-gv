@@ -10,6 +10,7 @@ Python CLI tool for creating KMZ (Google Earth) files from geotagged photos.
 - Thumbnail generation for Google Earth
 - Compass bearing icon rotation based on photo direction
 - Progress indicators with rich console output
+- Export to CSV with UTM coordinates for AutoCAD
 
 ## Installation
 
@@ -76,8 +77,14 @@ images2kmz /path/to/photos --thumbnail-size 1024 768 -o output.kmz
 # Verbose output (shows processing progress)
 images2kmz /path/to/photos -v
 
-# Enable debug log file (saved to input directory)
+# Enable debug log file (saved to output or input directory)
 images2kmz /path/to/photos --log-file
+
+# Export photo coordinates to CSV with UTM coordinates
+images2kmz /path/to/photos --csv
+
+# Export CSV with custom coordinate system (default: NAD83/EPSG:4269)
+images2kmz /path/to/photos --csv --coordinate-system EPSG:4326
 
 # Show help
 images2kmz --help
@@ -91,7 +98,9 @@ images2kmz --help
 - `--thumbnail-size WIDTH HEIGHT`: Maximum thumbnail dimensions (default: 800 600)
 - `--convert-heic`: Automatically convert HEIC files without prompting
 - `-v, --verbose`: Enable verbose console output (INFO level)
-- `-l, --log-file`: Enable debug log file (default: `{input_dir}/images2kmz_log_{timestamp}.log`)
+- `-l, --log-file`: Enable debug log file (default: `{output_dir}/images2kmz.log`)
+- `--csv`: Export photo coordinates to CSV file (default: `{output_dir}/photo_points.csv`)
+- `--coordinate-system EPSG`: Override default coordinate system (default: EPSG:4269 NAD83)
 - `--version`: Show version information
 
 #### Examples
@@ -190,6 +199,7 @@ images2kmz/
 │       ├── cli.py         # Command-line interface
 │       ├── core.py        # KMZ generation engine
 │       ├── image_processor.py   # Image handling (thumbnails, EXIF)
+│       ├── csv_exporter.py      # CSV export with UTM coordinates
 │       ├── heic_handler.py      # HEIC detection and conversion
 │       ├── logging_config.py    # Logging configuration
 │       ├── progress.py          # Progress bar utilities
@@ -243,6 +253,7 @@ See [AGENTS.md](AGENTS.md) for detailed coding standards and guidelines.
 - textual >= 0.30.0
 - piexif >= 1.1.3
 - pillow-heif >= 0.10.0
+- pyproj >= 3.6.0
 
 ## Limitations
 
@@ -256,7 +267,7 @@ The modular design makes it easy to add:
 - Photo filtering by date range
 - Custom pin icons based on metadata
 - Clustering of nearby photos
-- Export to other formats (GeoJSON, GPX)
+- Export to other formats (GeoJSON, GPX) - CSV export now available
 - GUI wrapper
 - Batch processing of multiple directories
 

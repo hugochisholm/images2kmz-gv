@@ -169,6 +169,7 @@ images2kmz/
 │       ├── cli.py         # CLI interface (argparse + rich)
 │       ├── core.py        # Core KMZGenerator class
 │       ├── image_processor.py   # Image processing (GPS extraction, thumbnails)
+│       ├── csv_exporter.py     # CSV export with UTM coordinates
 │       ├── heic_handler.py      # HEIC format conversion
 │       ├── logging_config.py    # Logging configuration
 │       ├── progress.py          # Progress display utilities
@@ -178,6 +179,7 @@ images2kmz/
 │   ├── test_core.py       # Core functionality tests
 │   ├── test_cli.py        # CLI tests
 │   ├── test_image_processor.py
+│   ├── test_csv_exporter.py
 │   ├── test_heic_handler.py
 │   ├── test_progress.py
 │   └── test_utils.py
@@ -224,7 +226,7 @@ except KeyboardInterrupt:
 ```
 
 ### Dependencies
-- **Core**: GPSPhoto, Pillow, simplekml, rich, textual, piexif, pillow-heif
+- **Core**: GPSPhoto, Pillow, simplekml, rich, textual, piexif, pillow-heif, pyproj
 - **Testing**: pytest, pytest-cov
 - **Linting/Formatting** (recommended to add):
   - `ruff>=0.1.0` - Fast Python linter and formatter
