@@ -170,6 +170,7 @@ images2kmz/
 │       ├── core.py        # Core KMZGenerator class
 │       ├── image_processor.py   # Image processing (GPS extraction, thumbnails)
 │       ├── heic_handler.py      # HEIC format conversion
+│       ├── logging_config.py    # Logging configuration
 │       ├── progress.py          # Progress display utilities
 │       └── utils.py             # Utility functions (paths, formatting)
 ├── tests/
@@ -232,8 +233,63 @@ except KeyboardInterrupt:
 
 ### File I/O
 - Use `pathlib.Path` for all path operations
-- Create temp files with `tempfile.mkdtemp()` for thumbnails
-- Clean up temp files in `__del__` or explicit `cleanup()` methods
+- Use `tempfile.TemporaryDirectory` context manager for automatic cleanup
+- For resources with longer lifecycle, use context manager pattern (`__enter__`/`__exit__`)
+
+**Context Manager Pattern for Resource Management:**
+```python
+class KMZGenerator:
+    def __init__(self, output_path: Path, ...):
+        self._temp_dir: tempfile.TemporaryDirectory | None = None
+    
+    def __enter__(self) -> KMZGenerator:
+        self._temp_dir = tempfile.TemporaryDirectory()
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.cleanup()
+    
+    def cleanup(self) -> None:
+        if self._temp_dir:
+            self._temp_dir.cleanup()
+            self._temp_dir = None
+```
+
+### Logging
+
+Use Python's built-in `logging` module. Import and configure via `logging_config.py`:
+
+```python
+import logging
+
+# Use module-level logger
+logger = logging.getLogger(__name__)
+```
+
+**Log Levels:**
+- `DEBUG`: Detailed diagnostic info (file logging only)
+- `INFO`: Progress updates (console with --verbose)
+- `WARNING`: Recoverable issues (console + file)
+- `ERROR`: Failures that don't stop execution (console + file)
+
+**Standard Formats:**
+- Console: `%(asctime)s [%(levelname)s] %(message)s` (clean, readable)
+- File: `%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s` (detailed)
+
+Use the `logging_config.setup_logging()` function to configure dual handlers:
+```python
+from images2kmz.logging_config import setup_logging
+
+# Console: WARNING+ (default) or INFO+ (with --verbose)
+# File: DEBUG+ (when log file specified)
+setup_logging(verbose=args.verbose, log_file=args.log_file)
+```
+
+Set third-party loggers to WARNING to reduce noise:
+```python
+logging.getLogger("PIL").setLevel(logging.WARNING)
+logging.getLogger("simplekml").setLevel(logging.WARNING)
+```
 
 ### Git
 - Never commit: `*.kmz`, `*.kml`, sample images (see .gitignore)

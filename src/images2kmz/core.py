@@ -2,24 +2,34 @@ from __future__ import annotations
 
 """Core KMZ generation engine."""
 
+import logging
 import tempfile
 from collections.abc import Callable
+from contextlib import AbstractContextManager
 from pathlib import Path
+from types import TracebackType
 
 import simplekml
 
 from .image_processor import GPSData
 from .utils import get_absolute_path, format_file_size
 
+logger = logging.getLogger(__name__)
 
-class KMZGenerator:
+
+class KMZGenerator(AbstractContextManager):
     """
     KMZ file generator for geotagged photos.
-    
+
     This class handles creating a KML structure with embedded photo thumbnails
     and links to the original photos.
+
+    Use as a context manager to ensure proper cleanup of temporary files:
+        with KMZGenerator(output_path) as kmz:
+            kmz.add_photo(...)
+            kmz.save()
     """
-    
+
     def __init__(
         self,
         output_path: str,
@@ -28,7 +38,7 @@ class KMZGenerator:
     ):
         """
         Initialize KMZ generator.
-        
+
         Args:
             output_path: Path for output KMZ file
             thumbnail_size: Maximum thumbnail dimensions (for reference)
@@ -42,7 +52,25 @@ class KMZGenerator:
             'photos_added': 0,
             'total_size': 0
         }
-        self._temp_files: list[str] = []  # Track temp files to clean up later
+        self._temp_dir: tempfile.TemporaryDirectory | None = None
+
+    def __enter__(self) -> KMZGenerator:
+        """Enter context manager and create temporary directory."""
+        logger.debug("Entering KMZGenerator context manager")
+        self._temp_dir = tempfile.TemporaryDirectory()
+        logger.debug("Created temporary directory: %s", self._temp_dir.name)
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        """Exit context manager and clean up temporary directory."""
+        if exc_val:
+            logger.error("Exception occurred in KMZGenerator context: %s", exc_val, exc_info=True)
+        self.cleanup()
     
     def add_photo(self, photo_path: str, gps_data: GPSData, 
                   thumbnail_bytes: bytes, name: str | None = None,
@@ -63,21 +91,25 @@ class KMZGenerator:
         if name is None:
             name = Path(photo_path).name
         
+        logger.debug("Adding photo to KMZ: %s", name)
+        
         # Get absolute path to original
         abs_photo_path = get_absolute_path(photo_path)
         
         # Add thumbnail to KMZ archive
         # simplekml will handle embedding the image in the KMZ
-        # Save thumbnail to temporary file (will be cleaned up after KMZ is saved)
-        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp:
-            tmp.write(thumbnail_bytes)
-            tmp_path = tmp.name
-        
-        # Track temp file for cleanup later
-        self._temp_files.append(tmp_path)
+        # Save thumbnail to temporary file within the managed temp directory
+        if self._temp_dir is None:
+            logger.error("KMZGenerator used outside context manager")
+            raise RuntimeError("KMZGenerator must be used as a context manager (with statement)")
+
+        tmp_path = Path(self._temp_dir.name) / f"thumb_{self.stats['photos_added']}.jpg"
+        tmp_path.write_bytes(thumbnail_bytes)
+        logger.debug("Wrote thumbnail to temp file: %s (%d bytes)", tmp_path, len(thumbnail_bytes))
         
         # Add the thumbnail to the KMZ
         embedded_path = self.kml.addfile(tmp_path)
+        logger.debug("Added thumbnail to KMZ: %s", embedded_path)
         
         # Create placemark at GPS coordinates
         coords = [(gps_data.longitude, gps_data.latitude)]
@@ -131,15 +163,19 @@ class KMZGenerator:
         # Track stats
         self.stats['photos_added'] += 1
         self.stats['total_size'] += len(thumbnail_bytes)
+        logger.info("Added photo '%s' at coordinates (%.6f, %.6f)", name, gps_data.latitude, gps_data.longitude)
     
     def cleanup(self) -> None:
-        """Clean up temporary files."""
-        for tmp_file in self._temp_files:
+        """Clean up temporary directory and all its contents."""
+        if self._temp_dir is not None:
+            logger.debug("Cleaning up temporary directory: %s", self._temp_dir.name)
             try:
-                Path(tmp_file).unlink(missing_ok=True)
-            except Exception:
-                pass
-        self._temp_files.clear()
+                self._temp_dir.cleanup()
+                logger.debug("Successfully cleaned up temporary directory")
+            except Exception as e:
+                logger.warning("Failed to clean up temporary directory: %s", e)
+            finally:
+                self._temp_dir = None
     
     def save(self) -> str:
         """
@@ -148,15 +184,24 @@ class KMZGenerator:
         Returns:
             Absolute path to saved KMZ file
         """
+        logger.info("Saving KMZ file to: %s", self.output_path)
         try:
             # Ensure output directory exists
             output_path = Path(self.output_path)
             output_path.parent.mkdir(parents=True, exist_ok=True)
+            logger.debug("Ensured output directory exists: %s", output_path.parent)
             
             # Save as KMZ (compressed KML with embedded files)
             self.kml.savekmz(self.output_path)
             
-            return get_absolute_path(self.output_path)
+            final_path = get_absolute_path(self.output_path)
+            file_size = output_path.stat().st_size
+            logger.info("Successfully saved KMZ file: %s (%d bytes)", final_path, file_size)
+            
+            return final_path
+        except Exception as e:
+            logger.error("Failed to save KMZ file: %s", e, exc_info=True)
+            raise
         finally:
             self.cleanup()
     

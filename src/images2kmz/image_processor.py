@@ -2,6 +2,9 @@ from __future__ import annotations
 
 """Image processing functions for extracting GPS data and creating thumbnails."""
 
+import logging
+import os
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
@@ -9,6 +12,8 @@ from collections.abc import Callable
 
 from PIL import Image
 from GPSPhoto import gpsphoto
+
+logger = logging.getLogger(__name__)
 
 
 # Supported image formats
@@ -42,14 +47,17 @@ def extract_gps_data(image_path: str) -> GPSData | None:
         
         if data and 'Latitude' in data and 'Longitude' in data:
             altitude = data.get('Altitude')
-            return GPSData(
+            gps_data = GPSData(
                 latitude=data['Latitude'],
                 longitude=data['Longitude'],
                 altitude=altitude
             )
+            logger.debug(f"GPS data extracted from {image_path}: {gps_data}")
+            return gps_data
+        logger.debug(f"No GPS data found in {image_path}")
         return None
     except Exception as e:
-        # If there's any error reading GPS data, return None
+        logger.warning(f"Error extracting GPS data from {image_path}: {e}")
         return None
 
 
@@ -64,25 +72,33 @@ def create_thumbnail(image_path: str, max_size: tuple[int, int] = (800, 600)) ->
     Returns:
         Thumbnail image as bytes (JPEG format)
     """
-    with Image.open(image_path) as img:
-        # Handle EXIF orientation
-        try:
-            from PIL import ImageOps
-            img = ImageOps.exif_transpose(img)
-        except Exception:
-            pass
-        
-        # Create thumbnail maintaining aspect ratio
-        img.thumbnail(max_size, Image.Resampling.LANCZOS)
-        
-        # Convert to RGB if necessary (handles RGBA, P, etc.)
-        if img.mode not in ('RGB', 'L'):
-            img = img.convert('RGB')
-        
-        # Save to bytes buffer
-        buffer = BytesIO()
-        img.save(buffer, format='JPEG', quality=85, optimize=True)
-        return buffer.getvalue()
+    logger.debug(f"Creating thumbnail for {image_path} with max size {max_size}")
+    try:
+        with Image.open(image_path) as img:
+            original_size = img.size
+            # Handle EXIF orientation
+            try:
+                from PIL import ImageOps
+                img = ImageOps.exif_transpose(img)
+            except Exception:
+                pass
+            
+            # Create thumbnail maintaining aspect ratio
+            img.thumbnail(max_size, Image.Resampling.LANCZOS)
+            
+            # Convert to RGB if necessary (handles RGBA, P, etc.)
+            if img.mode not in ('RGB', 'L'):
+                img = img.convert('RGB')
+            
+            # Save to bytes buffer
+            buffer = BytesIO()
+            img.save(buffer, format='JPEG', quality=85, optimize=True)
+            thumbnail_size = buffer.tell()
+            logger.debug(f"Thumbnail created for {image_path}: {original_size} -> ~{img.size} ({thumbnail_size} bytes)")
+            return buffer.getvalue()
+    except Exception as e:
+        logger.error(f"Failed to create thumbnail for {image_path}: {e}")
+        raise
 
 
 def extract_custom_pin_name(image_path: str, fallback_name: str) -> tuple[str, str | None]:
@@ -264,14 +280,58 @@ def get_compass_bearing(image_path: str) -> dict | None:
 def is_supported_format(file_path: str) -> bool:
     """
     Check if file is a supported image format.
-    
+
     Args:
         file_path: Path to file
-        
+
     Returns:
         True if file extension is supported
     """
     return file_path.lower().endswith(SUPPORTED_FORMATS)
+
+
+def _process_single_image(args: tuple[str, tuple[int, int]]) -> dict | None:
+    """Process a single image - helper function for parallel processing.
+
+    Args:
+        args: Tuple of (image_path, thumbnail_size)
+
+    Returns:
+        Dict with processed image info or None if processing failed
+    """
+    image_path, thumbnail_size = args
+
+    try:
+        # Extract GPS data
+        gps_data = extract_gps_data(image_path)
+
+        if gps_data is None:
+            return {'skipped': True, 'path': image_path, 'reason': 'no_gps'}
+
+        # Create thumbnail
+        thumbnail_bytes = create_thumbnail(image_path, thumbnail_size)
+
+        # Get filename
+        filename = Path(image_path).name
+
+        # Extract custom pin name and description from EXIF
+        custom_name, description_text = extract_custom_pin_name(image_path, filename)
+
+        # Extract compass bearing from EXIF
+        bearing = get_compass_bearing(image_path)
+
+        return {
+            'path': image_path,
+            'filename': filename,
+            'gps': gps_data,
+            'thumbnail': thumbnail_bytes,
+            'custom_name': custom_name,
+            'description_text': description_text,
+            'bearing': bearing
+        }
+
+    except Exception as e:
+        return {'error': True, 'path': image_path, 'error_message': str(e)}
 
 
 def get_image_files(directory: str, recursive: bool = False) -> list[str]:
@@ -307,21 +367,24 @@ def get_image_files(directory: str, recursive: bool = False) -> list[str]:
 
 class ImageProcessor:
     """High-level image processing coordinator."""
-    
-    def __init__(self, thumbnail_size: tuple[int, int] = (800, 600)):
+
+    def __init__(self, thumbnail_size: tuple[int, int] = (800, 600), max_workers: int | None = None):
         """
         Initialize image processor.
-        
+
         Args:
             thumbnail_size: Maximum dimensions for thumbnails
+            max_workers: Maximum number of parallel workers (default: min(CPU count, 8))
         """
         self.thumbnail_size = thumbnail_size
+        self.max_workers = max_workers if max_workers is not None else min(os.cpu_count() or 1, 8)
         self.stats = {
             'total_found': 0,
             'processed': 0,
             'skipped_no_gps': 0,
             'errors': 0
         }
+        self.errors: list[dict] = []  # Collect errors for end-of-run reporting
     
     def process_directory(
         self,
@@ -330,13 +393,13 @@ class ImageProcessor:
         progress_callback: Callable[[int, int, str], None] | None = None,
     ) -> list[dict]:
         """
-        Process all images in a directory.
-        
+        Process all images in a directory using parallel processing.
+
         Args:
             directory: Directory to scan
             recursive: Search recursively
             progress_callback: Optional callback(current, total, filename) for progress tracking
-            
+
         Returns:
             List of dicts with processed image info:
             {
@@ -351,52 +414,101 @@ class ImageProcessor:
         """
         image_files = get_image_files(directory, recursive)
         self.stats['total_found'] = len(image_files)
-        
+        self.errors = []  # Reset error collection
+
+        logger.info(f"Starting processing of {len(image_files)} image(s) in '{directory}' (recursive={recursive}, workers={self.max_workers})")
+
         processed_images = []
-        
-        for index, image_path in enumerate(image_files, 1):
-            try:
-                # Extract GPS data
-                gps_data = extract_gps_data(image_path)
-                
-                if gps_data is None:
-                    self.stats['skipped_no_gps'] += 1
-                    continue
-                
-                # Create thumbnail
-                thumbnail_bytes = create_thumbnail(image_path, self.thumbnail_size)
-                
-                # Get filename
+        completed = 0
+
+        # Prepare arguments for parallel processing
+        process_args = [(path, self.thumbnail_size) for path in image_files]
+
+        # Run synchronously when max_workers=1 (useful for testing with mocks)
+        if self.max_workers == 1:
+            for args in process_args:
+                completed += 1
+                image_path = args[0]
                 filename = Path(image_path).name
-                
-                # Extract custom pin name and description from EXIF
-                custom_name, description_text = extract_custom_pin_name(image_path, filename)
-                
-                # Extract compass bearing from EXIF
-                bearing = get_compass_bearing(image_path)
-                
-                processed_images.append({
-                    'path': image_path,
-                    'filename': filename,
-                    'gps': gps_data,
-                    'thumbnail': thumbnail_bytes,
-                    'custom_name': custom_name,
-                    'description_text': description_text,
-                    'bearing': bearing
-                })
-                
-                self.stats['processed'] += 1
-                
+
+                result = _process_single_image(args)
+
+                if result is None:
+                    self.stats['errors'] += 1
+                    error_msg = 'Unknown error during processing'
+                    self.errors.append({'path': image_path, 'error': error_msg})
+                    logger.warning(f"Failed to process {filename}: {error_msg}")
+                elif result.get('skipped'):
+                    self.stats['skipped_no_gps'] += 1
+                    logger.debug(f"Skipped {filename}: no GPS data")
+                elif result.get('error'):
+                    self.stats['errors'] += 1
+                    error_msg = result.get('error_message', 'Unknown error')
+                    self.errors.append({'path': image_path, 'error': error_msg})
+                    logger.warning(f"Failed to process {filename}: {error_msg}")
+                else:
+                    processed_images.append(result)
+                    self.stats['processed'] += 1
+                    logger.debug(f"Successfully processed {filename}")
+
                 # Fire progress callback
                 if progress_callback:
-                    progress_callback(index, len(image_files), filename)
-                
-            except Exception as e:
-                self.stats['errors'] += 1
-                # Silently skip files with errors
-                continue
-        
+                    progress_callback(completed, len(image_files), filename)
+        else:
+            with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
+                # Submit all tasks and map to futures
+                future_to_path = {
+                    executor.submit(_process_single_image, args): args[0]
+                    for args in process_args
+                }
+
+                # Process completed tasks as they finish
+                for future in as_completed(future_to_path):
+                    completed += 1
+                    image_path = future_to_path[future]
+                    filename = Path(image_path).name
+
+                    try:
+                        result = future.result()
+
+                        if result is None:
+                            self.stats['errors'] += 1
+                            self.errors.append({
+                                'path': image_path,
+                                'error': 'Unknown error during processing'
+                            })
+                        elif result.get('skipped'):
+                            self.stats['skipped_no_gps'] += 1
+                        elif result.get('error'):
+                            self.stats['errors'] += 1
+                            self.errors.append({
+                                'path': image_path,
+                                'error': result.get('error_message', 'Unknown error')
+                            })
+                        else:
+                            processed_images.append(result)
+                            self.stats['processed'] += 1
+
+                    except Exception as e:
+                        self.stats['errors'] += 1
+                        self.errors.append({
+                            'path': image_path,
+                            'error': str(e)
+                        })
+
+                    # Fire progress callback
+                    if progress_callback:
+                        progress_callback(completed, len(image_files), filename)
+
         return processed_images
+
+    def get_errors(self) -> list[dict]:
+        """Get list of errors collected during processing.
+
+        Returns:
+            List of dicts with 'path' and 'error' keys
+        """
+        return self.errors.copy()
     
     def get_stats(self) -> dict[str, int]:
         """Get processing statistics."""

@@ -3,6 +3,7 @@ from __future__ import annotations
 """Command-line interface for images2kmz."""
 
 import argparse
+import logging
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -14,6 +15,9 @@ from .image_processor import ImageProcessor
 from .heic_handler import HEICHandler, batch_convert_heic
 from .utils import get_absolute_path
 from .progress import ProgressBar, create_progress_callback
+from .logging_config import setup_logging
+
+logger = logging.getLogger(__name__)
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -69,6 +73,19 @@ def create_parser() -> argparse.ArgumentParser:
         '--version',
         action='version',
         version='%(prog)s 0.2.0'
+    )
+    
+    parser.add_argument(
+        '-v', '--verbose',
+        action='store_true',
+        help='Enable verbose console output'
+    )
+    
+    parser.add_argument(
+        '-l', '--log-file',
+        type=str,
+        default='',
+        help='Path to log file for detailed logging (default: input directory as images2kmz_log_YYYY-MM-DDTHHMM.log)'
     )
     
     return parser
@@ -196,10 +213,8 @@ def run(args: list | None = None) -> int:
         parser = create_parser()
         parsed_args = parser.parse_args(args)
         
-        # Print header
-        print_header(console)
-        
         # Handle optional input directory - prompt if not provided
+        # (Must be done before logging setup to determine default log file location)
         if parsed_args.input_dir is None:
             input_dir = prompt_for_directory(console)
         else:
@@ -208,6 +223,30 @@ def run(args: list | None = None) -> int:
                 console.print(f"\n[bold red]Error: Input directory does not exist: {input_dir}[/bold red]")
                 return 1
         
+        # Setup logging based on command-line arguments
+        # Default log file: input directory with timestamp format images2kmz_log_YYYY-MM-DDTHHMM.log
+        if parsed_args.log_file:
+            log_file_path = Path(parsed_args.log_file)
+            # Resolve relative paths relative to input directory
+            if not log_file_path.is_absolute():
+                log_file_path = Path(input_dir) / log_file_path
+        elif parsed_args.verbose:  # Only create default log file in verbose mode
+            timestamp = datetime.now().strftime("%Y-%m-%dT%H%M")
+            log_file_path = Path(input_dir) / f"images2kmz_log_{timestamp}.log"
+        else:
+            log_file_path = None
+        
+        setup_logging(verbose=parsed_args.verbose, log_file=log_file_path)
+        
+        logger.info("=== images2kmz started ===")
+        logger.info(f"Command-line arguments: {args}")
+        
+        # Print header
+        print_header(console)
+        
+        logger.info(f"Input directory: {input_dir}")
+        logger.info(f"Recursive search: {parsed_args.recursive}")
+        logger.info(f"Thumbnail size: {parsed_args.thumbnail_size}")
         console.print(f"\n[cyan]Input directory: {input_dir}[/cyan]")
         console.print(f"[cyan]Recursive search: {'Yes' if parsed_args.recursive else 'No'}[/cyan]")
         console.print(f"[cyan]Thumbnail size: {parsed_args.thumbnail_size[0]}x{parsed_args.thumbnail_size[1]}[/cyan]")
@@ -216,10 +255,12 @@ def run(args: list | None = None) -> int:
         console.print("\n[bold cyan]🔍 Scanning for images...[/bold cyan]")
         heic_handler = HEICHandler(input_dir, parsed_args.recursive)
         num_heic = heic_handler.scan()
+        logger.info(f"Found {num_heic} HEIC files")
         
         if num_heic > 0:
             if parsed_args.convert_heic:
                 # Auto-convert without prompting
+                logger.info(f"Auto-converting {num_heic} HEIC files")
                 console.print(f"\n[yellow]Found {num_heic} HEIC file{'s' if num_heic != 1 else ''}[/yellow]")
                 console.print("[dim yellow]Converting HEIC files...[/dim yellow]")
                 batch_convert_heic(
@@ -229,6 +270,7 @@ def run(args: list | None = None) -> int:
                 )
             else:
                 # Prompt user
+                logger.info("Prompting user for HEIC conversion")
                 heic_handler.prompt_and_convert()
         
         # Phase 2: Process images with progress bar
@@ -239,9 +281,11 @@ def run(args: list | None = None) -> int:
         
         image_files = get_image_files(input_dir, parsed_args.recursive)
         num_images = len(image_files)
+        logger.info(f"Found {num_images} image files to process")
         console.print(f"[cyan]Found {num_images} JPG file{'s' if num_images != 1 else ''}[/cyan]\n")
         
         console.print("[bold cyan]⚙️  Processing images...[/bold cyan]")
+        logger.info("Starting image processing...")
         
         try:
             stats = processor.get_stats()
@@ -263,12 +307,14 @@ def run(args: list | None = None) -> int:
             stats = processor.get_stats()
             
         except Exception as e:
+            logger.error(f"Error processing images: {e}", exc_info=True)
             console.print(f"\n[bold red]Error processing images: {e}[/bold red]")
             import traceback
             traceback.print_exc()
             return 1
         
         # Show processing results
+        logger.info(f"Processing complete - Processed: {stats['processed']}, Skipped: {stats['skipped_no_gps']}, Errors: {stats['errors']}")
         if stats['processed'] > 0:
             console.print(f"   [green]Processed: {stats['processed']} files[/green]")
         if stats['skipped_no_gps'] > 0:
@@ -285,6 +331,7 @@ def run(args: list | None = None) -> int:
         
         # Phase 3: Generate KMZ with progress bar
         console.print(f"\n[bold cyan]📦 Generating KMZ file...[/bold cyan]")
+        logger.info(f"Starting KMZ generation with {len(processed_images)} images")
         
         # Determine output path
         # If -o flag wasn't explicitly provided, use input_dir as default location
@@ -295,47 +342,57 @@ def run(args: list | None = None) -> int:
             # Explicit -o provided, use as specified (could be relative or absolute)
             output_path = get_absolute_path(parsed_args.output)
         
+        logger.info(f"Output path: {output_path}")
+        
         try:
-            kmz_gen = KMZGenerator(output_path, thumbnail_size=thumbnail_size)
-            
-            kmz_progress = ProgressBar("Adding photos", console=console)
-            kmz_progress.start(len(processed_images))
-            try:
-                # Add all processed images
-                for index, img_data in enumerate(processed_images, 1):
-                    kmz_gen.add_photo(
-                        photo_path=img_data['path'],
-                        gps_data=img_data['gps'],
-                        thumbnail_bytes=img_data['thumbnail'],
-                        name=img_data.get('custom_name', img_data['filename']),
-                        description_text=img_data.get('description_text'),
-                        bearing=img_data.get('bearing'),
-                    )
-                    
-                    filename = Path(img_data['path']).name
-                    kmz_progress.update(index, len(processed_images), filename)
-            finally:
-                kmz_progress.finish()
-            
-            # Save KMZ file
-            output_path = kmz_gen.save()
+            with KMZGenerator(output_path, thumbnail_size=thumbnail_size) as kmz_gen:
+                kmz_progress = ProgressBar("Adding photos", console=console)
+                kmz_progress.start(len(processed_images))
+                try:
+                    # Add all processed images
+                    for index, img_data in enumerate(processed_images, 1):
+                        kmz_gen.add_photo(
+                            photo_path=img_data['path'],
+                            gps_data=img_data['gps'],
+                            thumbnail_bytes=img_data['thumbnail'],
+                            name=img_data.get('custom_name', img_data['filename']),
+                            description_text=img_data.get('description_text'),
+                            bearing=img_data.get('bearing'),
+                        )
+                        
+                        filename = Path(img_data['path']).name
+                        kmz_progress.update(index, len(processed_images), filename)
+                finally:
+                    kmz_progress.finish()
+                
+                # Save KMZ file
+                logger.info("Saving KMZ file...")
+                output_path = kmz_gen.save()
+                logger.info(f"KMZ file saved: {output_path}")
+                
+                # Print summary with colored output
+                print_summary(stats, kmz_gen, output_path, console)
             
         except Exception as e:
+            logger.error(f"Error generating KMZ file: {e}", exc_info=True)
             console.print(f"\n[bold red]Error generating KMZ file: {e}[/bold red]")
             import traceback
             traceback.print_exc()
             return 1
         
-        # Print summary with colored output
-        print_summary(stats, kmz_gen, output_path, console)
-        
+        logger.info("=== images2kmz completed successfully ===")
         return 0
     except KeyboardInterrupt:
+        logger.warning("Operation cancelled by user")
         console.print("\n[bold yellow]Operation cancelled by user.[/bold yellow]")
         return 130
-    finally:
-        if kmz_gen:
-            kmz_gen.cleanup()
+        
+        logger.info("=== images2kmz completed successfully ===")
+        return 0
+    except KeyboardInterrupt:
+        logger.warning("Operation cancelled by user")
+        console.print("\n[bold yellow]Operation cancelled by user.[/bold yellow]")
+        return 130
 
 
 def main():

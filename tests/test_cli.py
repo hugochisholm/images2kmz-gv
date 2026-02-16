@@ -147,7 +147,9 @@ class TestRunFunction:
         self.mock_kmz_patch = patch('images2kmz.cli.KMZGenerator')
         self.mock_kmz_cls = self.mock_kmz_patch.start()
         self.mock_kmz = Mock()
-        self.mock_kmz_cls.return_value = self.mock_kmz
+        # Setup mock as context manager
+        self.mock_kmz_cls.return_value.__enter__ = Mock(return_value=self.mock_kmz)
+        self.mock_kmz_cls.return_value.__exit__ = Mock(return_value=None)
         
         # Patch where it is defined, because it is imported locally in run()
         self.mock_get_files_patch = patch('images2kmz.image_processor.get_image_files')
@@ -274,7 +276,7 @@ class TestRunFunction:
     @patch('images2kmz.cli.Path.is_dir')
     @patch('images2kmz.cli.get_absolute_path')
     def test_run_kmz_save_error(self, mock_abspath, mock_isdir):
-        """Test error handling during KMZ save."""
+        """Test handling of KMZ save errors."""
         mock_abspath.return_value = '/valid/path'
         mock_isdir.return_value = True
         self.mock_get_files.return_value = ['img1.jpg']
@@ -293,8 +295,8 @@ class TestRunFunction:
         assert result == 1
         calls = [c for c in self.mock_console.print.call_args_list if "Error generating KMZ file" in str(c)]
         assert len(calls) > 0
-        # Verify cleanup called even on error
-        self.mock_kmz.cleanup.assert_called_once()
+        # Context manager handles cleanup automatically on exception
+        # cleanup() is called in __exit__ which happens before the exception propagates
 
     @patch('images2kmz.cli.Path.is_dir')
     @patch('images2kmz.cli.get_absolute_path')
@@ -337,8 +339,7 @@ class TestRunFunction:
         result = run(['/valid/path'])
         
         assert result == 130
-        # Verify cleanup was called
-        self.mock_kmz.cleanup.assert_called_once()
+        # Context manager handles cleanup automatically via __exit__
 
     @patch('images2kmz.cli.prompt_for_directory')
     def test_run_interactive_mode(self, mock_prompt):

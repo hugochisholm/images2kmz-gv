@@ -72,6 +72,12 @@ images2kmz /path/to/photos --convert-heic -o output.kmz
 # Custom thumbnail size
 images2kmz /path/to/photos --thumbnail-size 1024 768 -o output.kmz
 
+# Verbose output (shows processing progress)
+images2kmz /path/to/photos -v
+
+# Enable debug log file (saved to input directory)
+images2kmz /path/to/photos --log-file
+
 # Show help
 images2kmz --help
 ```
@@ -83,6 +89,8 @@ images2kmz --help
 - `-r, --recursive`: Recursively search subdirectories
 - `--thumbnail-size WIDTH HEIGHT`: Maximum thumbnail dimensions (default: 800 600)
 - `--convert-heic`: Automatically convert HEIC files without prompting
+- `-v, --verbose`: Enable verbose console output (INFO level)
+- `-l, --log-file`: Enable debug log file (default: `{input_dir}/images2kmz_log_{timestamp}.log`)
 - `--version`: Show version information
 
 #### Examples
@@ -122,8 +130,8 @@ You can also import and use images2kmz in your own Python scripts:
 ```python
 from images2kmz import ImageProcessor, KMZGenerator
 
-# Process images
-processor = ImageProcessor(thumbnail_size=(800, 600))
+# Process images (parallel processing with up to 8 workers by default)
+processor = ImageProcessor(thumbnail_size=(800, 600), max_workers=4)
 images = processor.process_directory('/path/to/photos', recursive=True)
 
 # Get statistics
@@ -131,16 +139,16 @@ stats = processor.get_stats()
 print(f"Processed {stats['processed']} photos")
 print(f"Skipped {stats['skipped_no_gps']} photos without GPS")
 
-# Generate KMZ
-kmz = KMZGenerator('output.kmz')
-for img in images:
-    kmz.add_photo(
-        photo_path=img['path'],
-        gps_data=img['gps'],
-        thumbnail_bytes=img['thumbnail'],
-        name=img['filename']
-    )
-kmz.save()
+# Generate KMZ (using context manager for automatic cleanup)
+with KMZGenerator('output.kmz', thumbnail_size=(800, 600)) as kmz:
+    for img in images:
+        kmz.add_photo(
+            photo_path=img['path'],
+            gps_data=img['gps'],
+            thumbnail_bytes=img['thumbnail'],
+            name=img['filename']
+        )
+    kmz.save()
 ```
 
 ## How It Works
@@ -180,6 +188,7 @@ images2kmz/
 │       ├── core.py        # KMZ generation engine
 │       ├── image_processor.py   # Image handling (thumbnails, EXIF)
 │       ├── heic_handler.py      # HEIC detection and conversion
+│       ├── logging_config.py    # Logging configuration
 │       ├── progress.py          # Progress bar utilities
 │       └── utils.py             # Utility functions
 ├── tests/                 # Test suite
