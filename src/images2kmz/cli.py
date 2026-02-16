@@ -246,13 +246,23 @@ def run(args: list | None = None) -> int:
                 return 1
         
         # Setup logging based on command-line arguments
-        # Default log file: input directory with timestamp format images2kmz_log_YYYY-MM-DDTHHMM.log
+        # Determine output directory first (for CSV mode)
+        output_dir = None
+        if parsed_args.output != 'photos.kmz':  # Explicit output provided
+            output_dir = Path(get_absolute_path(parsed_args.output)).parent
+        # If no explicit output, output_dir remains None (will use input_dir later)
+        
+        # Default log file: images2kmz.log in output location (if --csv) or input directory
         if parsed_args.log_file:
             log_file_path = Path(parsed_args.log_file)
-            # Resolve relative paths relative to input directory
+            # Resolve relative paths relative to output or input directory
             if not log_file_path.is_absolute():
-                log_file_path = Path(input_dir) / log_file_path
-        elif parsed_args.verbose:  # Only create default log file in verbose mode
+                log_base = output_dir if output_dir else Path(input_dir)
+                log_file_path = log_base / log_file_path
+        elif parsed_args.csv:  # CSV mode: always create log file
+            log_base = output_dir if output_dir else Path(input_dir)
+            log_file_path = log_base / "images2kmz.log"
+        elif parsed_args.verbose:  # Verbose mode without CSV: create timestamped log
             timestamp = datetime.now().strftime("%Y-%m-%dT%H%M")
             log_file_path = Path(input_dir) / f"images2kmz_log_{timestamp}.log"
         else:
@@ -397,15 +407,10 @@ def run(args: list | None = None) -> int:
                 
                 # Phase 4: Export CSV if requested
                 if parsed_args.csv and processed_images:
-                    # Determine output path with .csv extension
-                    csv_filename = parsed_args.csv
-                    if not csv_filename.lower().endswith('.csv'):
-                        csv_filename = f"{csv_filename}.csv"
-                    
-                    if Path(csv_filename).is_absolute():
-                        csv_path = csv_filename
-                    else:
-                        csv_path = str(Path(input_dir) / csv_filename)
+                    # Determine output directory for CSV
+                    # Use output location if specified, otherwise use input directory
+                    csv_base_dir = output_dir if output_dir else Path(input_dir)
+                    csv_path = str(csv_base_dir / "photo_points.csv")
 
                     console.print(f"\n[bold cyan]📊 Exporting CSV file...[/bold cyan]")
                     logger.info(f"Starting CSV export to {csv_path}")
