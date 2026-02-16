@@ -83,17 +83,15 @@ def create_parser() -> argparse.ArgumentParser:
     
     parser.add_argument(
         '-l', '--log-file',
-        type=str,
-        default='',
-        help='Path to log file for detailed logging (default: input directory as images2kmz_log_YYYY-MM-DDTHHMM.log)'
+        action='store_true',
+        help='Enable logging to images2kmz.log in output directory'
     )
     
     # CSV Export options
     parser.add_argument(
         '--csv',
-        type=str,
-        default='',
-        help='Output CSV file path for survey data (optional; enables CSV export with UTM coordinates)'
+        action='store_true',
+        help='Export photo points to CSV file (photo_points.csv) in output directory'
     )
 
     parser.add_argument(
@@ -252,14 +250,8 @@ def run(args: list | None = None) -> int:
             output_dir = Path(get_absolute_path(parsed_args.output)).parent
         # If no explicit output, output_dir remains None (will use input_dir later)
         
-        # Default log file: images2kmz.log in output location (if --csv) or input directory
-        if parsed_args.log_file:
-            log_file_path = Path(parsed_args.log_file)
-            # Resolve relative paths relative to output or input directory
-            if not log_file_path.is_absolute():
-                log_base = output_dir if output_dir else Path(input_dir)
-                log_file_path = log_base / log_file_path
-        elif parsed_args.csv:  # CSV mode: always create log file
+        # Default log file: images2kmz.log in output location (if --log-file or --csv)
+        if parsed_args.log_file or parsed_args.csv:
             log_base = output_dir if output_dir else Path(input_dir)
             log_file_path = log_base / "images2kmz.log"
         elif parsed_args.verbose:  # Verbose mode without CSV: create timestamped log
