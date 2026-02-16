@@ -62,3 +62,11 @@ HEIC originals/
 # Temporary files
 *.tmp
 .*.tmp
+
+# Sample/test data directories
+sample-images/
+sample-images2/
+
+# Log files
+log.txt
+custom.log
