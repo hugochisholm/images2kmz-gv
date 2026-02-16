@@ -384,7 +384,7 @@ class TestHelpers:
         mock_kmz = Mock()
         mock_kmz.get_formatted_file_size.return_value = "10 MB"
         
-        print_summary(stats, mock_kmz, "/out.kmz", mock_console)
+        print_summary(stats, mock_kmz, "/out.kmz", None, mock_console)
         
         # Verify key info printed
         calls = str(mock_console.print.call_args_list)

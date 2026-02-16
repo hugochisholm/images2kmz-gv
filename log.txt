@@ -1,0 +1,40 @@
+2026-02-15T15:54:17 - images2kmz.logging_config - DEBUG - [logging_config.py:70] - Logging to file: log.txt
+2026-02-15T15:54:17 - images2kmz.cli - INFO - [cli.py:220] - === images2kmz started ===
+2026-02-15T15:54:17 - images2kmz.cli - INFO - [cli.py:221] - Command-line arguments: None
+2026-02-15T15:54:17 - images2kmz.cli - INFO - [cli.py:236] - Input directory: /Users/hugochisholm/projects/images2kmz-gv/sample-images
+2026-02-15T15:54:17 - images2kmz.cli - INFO - [cli.py:237] - Recursive search: False
+2026-02-15T15:54:17 - images2kmz.cli - INFO - [cli.py:238] - Thumbnail size: [800, 600]
+2026-02-15T15:54:17 - images2kmz.cli - INFO - [cli.py:247] - Found 4 HEIC files
+2026-02-15T15:54:17 - images2kmz.cli - INFO - [cli.py:262] - Prompting user for HEIC conversion
+2026-02-15T15:54:21 - images2kmz.cli - INFO - [cli.py:273] - Found 4 image files to process
+2026-02-15T15:54:21 - images2kmz.cli - INFO - [cli.py:277] - Starting image processing...
+2026-02-15T15:54:21 - images2kmz.image_processor - INFO - [image_processor.py:419] - Starting processing of 4 image(s) in '/Users/hugochisholm/projects/images2kmz-gv/sample-images' (recursive=False, workers=8)
+2026-02-15T15:54:21 - images2kmz.cli - INFO - [cli.py:306] - Processing complete - Processed: 4, Skipped: 0, Errors: 0
+2026-02-15T15:54:21 - images2kmz.cli - INFO - [cli.py:323] - Starting KMZ generation with 4 images
+2026-02-15T15:54:21 - images2kmz.cli - INFO - [cli.py:334] - Output path: /Users/hugochisholm/projects/images2kmz-gv/sample-images/photos.kmz
+2026-02-15T15:54:21 - images2kmz.core - DEBUG - [core.py:59] - Entering KMZGenerator context manager
+2026-02-15T15:54:21 - images2kmz.core - DEBUG - [core.py:61] - Created temporary directory: /var/folders/jx/0bb0dprx6n9fqjpbyf9zqx0r0000gn/T/tmpvqz1x78f
+2026-02-15T15:54:21 - images2kmz.core - DEBUG - [core.py:94] - Adding photo to KMZ: Basement Control - 24-2
+2026-02-15T15:54:21 - images2kmz.core - DEBUG - [core.py:108] - Wrote thumbnail to temp file: /var/folders/jx/0bb0dprx6n9fqjpbyf9zqx0r0000gn/T/tmpvqz1x78f/thumb_0.jpg (81456 bytes)
+2026-02-15T15:54:21 - images2kmz.core - DEBUG - [core.py:112] - Added thumbnail to KMZ: files/thumb_0.jpg
+2026-02-15T15:54:21 - images2kmz.core - INFO - [core.py:166] - Added photo 'Basement Control - 24-2' at coordinates (55.047736, -118.454186)
+2026-02-15T15:54:21 - images2kmz.core - DEBUG - [core.py:94] - Adding photo to KMZ: Basement Control - CHEST
+2026-02-15T15:54:21 - images2kmz.core - DEBUG - [core.py:108] - Wrote thumbnail to temp file: /var/folders/jx/0bb0dprx6n9fqjpbyf9zqx0r0000gn/T/tmpvqz1x78f/thumb_1.jpg (104983 bytes)
+2026-02-15T15:54:21 - images2kmz.core - DEBUG - [core.py:112] - Added thumbnail to KMZ: files/thumb_1.jpg
+2026-02-15T15:54:21 - images2kmz.core - INFO - [core.py:166] - Added photo 'Basement Control - CHEST' at coordinates (55.043136, -118.454575)
+2026-02-15T15:54:21 - images2kmz.core - DEBUG - [core.py:94] - Adding photo to KMZ: Basement Control - TBM B
+2026-02-15T15:54:21 - images2kmz.core - DEBUG - [core.py:108] - Wrote thumbnail to temp file: /var/folders/jx/0bb0dprx6n9fqjpbyf9zqx0r0000gn/T/tmpvqz1x78f/thumb_2.jpg (111866 bytes)
+2026-02-15T15:54:21 - images2kmz.core - DEBUG - [core.py:112] - Added thumbnail to KMZ: files/thumb_2.jpg
+2026-02-15T15:54:21 - images2kmz.core - INFO - [core.py:166] - Added photo 'Basement Control - TBM B' at coordinates (55.046892, -118.471353)
+2026-02-15T15:54:21 - images2kmz.core - DEBUG - [core.py:94] - Adding photo to KMZ: Basement Control - 24-1
+2026-02-15T15:54:21 - images2kmz.core - DEBUG - [core.py:108] - Wrote thumbnail to temp file: /var/folders/jx/0bb0dprx6n9fqjpbyf9zqx0r0000gn/T/tmpvqz1x78f/thumb_3.jpg (86414 bytes)
+2026-02-15T15:54:21 - images2kmz.core - DEBUG - [core.py:112] - Added thumbnail to KMZ: files/thumb_3.jpg
+2026-02-15T15:54:21 - images2kmz.core - INFO - [core.py:166] - Added photo 'Basement Control - 24-1' at coordinates (55.055206, -118.498642)
+2026-02-15T15:54:21 - images2kmz.cli - INFO - [cli.py:358] - Saving KMZ file...
+2026-02-15T15:54:21 - images2kmz.core - INFO - [core.py:187] - Saving KMZ file to: /Users/hugochisholm/projects/images2kmz-gv/sample-images/photos.kmz
+2026-02-15T15:54:21 - images2kmz.core - DEBUG - [core.py:192] - Ensured output directory exists: /Users/hugochisholm/projects/images2kmz-gv/sample-images
+2026-02-15T15:54:21 - images2kmz.core - INFO - [core.py:199] - Successfully saved KMZ file: /Users/hugochisholm/projects/images2kmz-gv/sample-images/photos.kmz (383804 bytes)
+2026-02-15T15:54:21 - images2kmz.core - DEBUG - [core.py:171] - Cleaning up temporary directory: /var/folders/jx/0bb0dprx6n9fqjpbyf9zqx0r0000gn/T/tmpvqz1x78f
+2026-02-15T15:54:21 - images2kmz.core - DEBUG - [core.py:174] - Successfully cleaned up temporary directory
+2026-02-15T15:54:21 - images2kmz.cli - INFO - [cli.py:360] - KMZ file saved: /Users/hugochisholm/projects/images2kmz-gv/sample-images/photos.kmz
+2026-02-15T15:54:21 - images2kmz.cli - INFO - [cli.py:372] - === images2kmz completed successfully ===

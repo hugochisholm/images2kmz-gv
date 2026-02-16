@@ -88,16 +88,18 @@ class TestCSVExporter:
 
             assert output_path.exists()
 
-            # Read and verify CSV content
+            # Read and verify CSV content (no header row)
             with open(output_path) as f:
-                reader = csv.DictReader(f)
+                reader = csv.reader(f)
                 rows = list(reader)
 
             assert len(rows) == 1
-            assert rows[0]['Point_number'] == datetime.now().strftime("%y%m%d") + "9001"
-            assert 'Easting' in rows[0]
-            assert 'Northing' in rows[0]
-            assert rows[0]['description'] == 'Test Point'
+            # Point number format: YYMMDD + 9001
+            assert rows[0][0] == datetime.now().strftime("%y%m%d") + "9001"
+            # Description should be prefixed with "PHOTO "
+            assert rows[0][4] == 'PHOTO Test Point'
+            # Elevation should be 10.0 (not empty)
+            assert rows[0][3] == '10.0000'
 
     def test_export_multiple_photos_sequential(self):
         """Test sequential point numbering."""
@@ -123,12 +125,19 @@ class TestCSVExporter:
             exporter.export(processed_images, str(output_path), base_date=base_date)
 
             with open(output_path) as f:
-                reader = csv.DictReader(f)
+                reader = csv.reader(f)
                 rows = list(reader)
 
             assert len(rows) == 2
-            assert rows[0]['Point_number'] == "2602159001"
-            assert rows[1]['Point_number'] == "2602159002"
+            # Point numbers should be sequential (no header row)
+            assert rows[0][0] == "2602159001"
+            assert rows[1][0] == "2602159002"
+            # Elevation should be 0.0000 for photos without altitude
+            assert rows[0][3] == "0.0000"
+            assert rows[1][3] == "0.0000"
+            # Descriptions should have "PHOTO " prefix
+            assert rows[0][4] == "PHOTO photo1.jpg"
+            assert rows[1][4] == "PHOTO photo2.jpg"
 
 
 class TestUTMZone:

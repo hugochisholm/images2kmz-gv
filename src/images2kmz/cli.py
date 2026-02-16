@@ -162,6 +162,7 @@ def print_summary(
     processor_stats: dict,
     kmz_generator: KMZGenerator | None,
     output_path: str | None,
+    csv_path: str | None = None,
     console: Console | None = None,
 ):
     """
@@ -171,6 +172,7 @@ def print_summary(
         processor_stats: Statistics from ImageProcessor
         kmz_generator: KMZGenerator instance
         output_path: Path to output KMZ file
+        csv_path: Path to output CSV file (optional)
         console: Optional Console instance for rich output
     """
     if console is None:
@@ -205,6 +207,11 @@ def print_summary(
         console.print(f"   [dim]Path: {output_path}[/dim]")
     else:
         console.print("\n[bold yellow]⚠ No photos with GPS data found. KMZ file not created.[/bold yellow]")
+    
+    # CSV output info
+    if csv_path:
+        console.print(f"[green]📊 CSV: {Path(csv_path).name}[/green]")
+        console.print(f"   [dim]Path: {csv_path}[/dim]")
     
     console.print(f"[bold magenta]{separator}[/bold magenta]\n")
 
@@ -341,7 +348,7 @@ def run(args: list | None = None) -> int:
         
         # Check if we have any images to process
         if not processed_images:
-            print_summary(stats, None, None, console)
+            print_summary(stats, None, None, None, console)
             return 0
         
         # Phase 3: Generate KMZ with progress bar
@@ -386,34 +393,48 @@ def run(args: list | None = None) -> int:
                 logger.info(f"KMZ file saved: {output_path}")
                 
                 # Print summary with colored output
-                print_summary(stats, kmz_gen, output_path, console)
-
+                csv_output_path = None
+                
                 # Phase 4: Export CSV if requested
                 if parsed_args.csv and processed_images:
+                    # Determine output path with .csv extension
+                    csv_filename = parsed_args.csv
+                    if not csv_filename.lower().endswith('.csv'):
+                        csv_filename = f"{csv_filename}.csv"
+                    
+                    if Path(csv_filename).is_absolute():
+                        csv_path = csv_filename
+                    else:
+                        csv_path = str(Path(input_dir) / csv_filename)
+
                     console.print(f"\n[bold cyan]📊 Exporting CSV file...[/bold cyan]")
-                    logger.info(f"Starting CSV export to {parsed_args.csv}")
+                    logger.info(f"Starting CSV export to {csv_path}")
 
                     try:
                         from .csv_exporter import CSVExporter
-
-                        # Determine output path
-                        if Path(parsed_args.csv).is_absolute():
-                            csv_path = parsed_args.csv
-                        else:
-                            csv_path = str(Path(input_dir) / parsed_args.csv)
 
                         exporter = CSVExporter(
                             coordinate_system=parsed_args.coordinate_system,
                         )
 
-                        csv_output = exporter.export(
-                            processed_images=processed_images,
-                            output_path=csv_path,
-                        )
+                        csv_progress = ProgressBar("Exporting", console=console)
+                        csv_progress.start(len(processed_images))
+                        try:
+                            csv_output_path = exporter.export(
+                                processed_images=processed_images,
+                                output_path=csv_path,
+                            )
+                        finally:
+                            csv_progress.finish()
 
-                        if csv_output:
-                            console.print(f"[green]✓ CSV exported to: {csv_output}[/green]")
-                            logger.info(f"CSV export complete: {csv_output}")
+                        if csv_output_path:
+                            coord_info = exporter.get_coordinate_info()
+                            utm_zone = exporter.get_utm_zone_info()
+                            console.print(f"[green]✓ CSV exported to: {csv_output_path}[/green]")
+                            console.print(f"   [dim]Coordinate system: {coord_info}[/dim]")
+                            if utm_zone:
+                                console.print(f"   [dim]UTM zone: {utm_zone}[/dim]")
+                            logger.info(f"CSV export complete: {csv_output_path}")
                         else:
                             console.print("[yellow]⚠ No data to export to CSV[/yellow]")
 
@@ -421,6 +442,9 @@ def run(args: list | None = None) -> int:
                         logger.error(f"Error exporting CSV: {e}", exc_info=True)
                         console.print(f"\n[bold red]Error exporting CSV: {e}[/bold red]")
                         # Don't fail the whole operation, just warn
+                
+                # Print summary with colored output (after CSV export)
+                print_summary(stats, kmz_gen, output_path, csv_output_path, console)
 
         except Exception as e:
             logger.error(f"Error generating KMZ file: {e}", exc_info=True)
@@ -428,13 +452,6 @@ def run(args: list | None = None) -> int:
             import traceback
             traceback.print_exc()
             return 1
-        
-        logger.info("=== images2kmz completed successfully ===")
-        return 0
-    except KeyboardInterrupt:
-        logger.warning("Operation cancelled by user")
-        console.print("\n[bold yellow]Operation cancelled by user.[/bold yellow]")
-        return 130
         
         logger.info("=== images2kmz completed successfully ===")
         return 0

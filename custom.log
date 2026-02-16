@@ -1,0 +1,10 @@
+2026-02-15T16:01:14 - images2kmz.logging_config - DEBUG - [logging_config.py:70] - Logging to file: custom.log
+2026-02-15T16:01:14 - images2kmz.cli - INFO - [cli.py:238] - === images2kmz started ===
+2026-02-15T16:01:14 - images2kmz.cli - INFO - [cli.py:239] - Command-line arguments: ['/var/folders/jx/0bb0dprx6n9fqjpbyf9zqx0r0000gn/T/tmpvx8erhpj', '-o', '/var/folders/jx/0bb0dprx6n9fqjpbyf9zqx0r0000gn/T/tmpvx8erhpj/out.kmz', '-v', '-l', 'custom.log']
+2026-02-15T16:01:14 - images2kmz.cli - INFO - [cli.py:244] - Input directory: /private/var/folders/jx/0bb0dprx6n9fqjpbyf9zqx0r0000gn/T/tmpvx8erhpj
+2026-02-15T16:01:14 - images2kmz.cli - INFO - [cli.py:245] - Recursive search: False
+2026-02-15T16:01:14 - images2kmz.cli - INFO - [cli.py:246] - Thumbnail size: [800, 600]
+2026-02-15T16:01:14 - images2kmz.cli - INFO - [cli.py:255] - Found 0 HEIC files
+2026-02-15T16:01:14 - images2kmz.cli - INFO - [cli.py:281] - Found 0 image files to process
+2026-02-15T16:01:14 - images2kmz.cli - INFO - [cli.py:285] - Starting image processing...
+2026-02-15T16:01:14 - images2kmz.cli - INFO - [cli.py:314] - Processing complete - Processed: 0, Skipped: 0, Errors: 0

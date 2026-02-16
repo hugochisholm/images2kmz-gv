@@ -36,6 +36,15 @@ class CSVExporter:
         self.coordinate_system = coordinate_system
         self.starting_point_number = starting_point_number
         self._transformer: Transformer | None = None
+        self._last_utm_zone: str | None = None
+
+    def get_coordinate_info(self) -> str:
+        """Get a description of the coordinate system used."""
+        return self.coordinate_system
+
+    def get_utm_zone_info(self) -> str | None:
+        """Get the UTM zone used for the last conversion."""
+        return self._last_utm_zone
 
     def _get_transformer(self) -> Transformer:
         """Get or create the coordinate transformer."""
@@ -87,6 +96,7 @@ class CSVExporter:
         """
         # Determine UTM zone from longitude
         utm_zone = self._get_utm_zone(longitude)
+        self._last_utm_zone = utm_zone
 
         # Transform directly to UTM from source CRS
         # Most GPS data from photos is in WGS84, so this handles that case
@@ -149,9 +159,6 @@ class CSVExporter:
         with open(output_file, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
 
-            # Write header
-            writer.writerow(['Point_number', 'Northing', 'Easting', 'Elevation', 'description'])
-
             for img_data in processed_images:
                 gps: GPSData = img_data['gps']
 
@@ -164,15 +171,15 @@ class CSVExporter:
                 # Generate point number
                 point_number = self.generate_point_number(base_date, sequence)
 
-                # Get description (use filename if no custom description)
-                description = img_data.get('custom_name', img_data['filename'])
+                # Get description (use filename if no custom description), prefix with PHOTO
+                description = f"PHOTO {img_data.get('custom_name', img_data['filename'])}"
 
                 # Write row
                 writer.writerow([
                     point_number,
                     f"{northing:.4f}",  # Northing to 4 decimal places
                     f"{easting:.4f}",   # Easting to 4 decimal places
-                    f"{elevation:.4f}" if elevation else "",
+                    f"{elevation:.4f}",  # Elevation always present (0 if none)
                     description,
                 ])
 
