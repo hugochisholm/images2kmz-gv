@@ -88,6 +88,21 @@ def create_parser() -> argparse.ArgumentParser:
         help='Path to log file for detailed logging (default: input directory as images2kmz_log_YYYY-MM-DDTHHMM.log)'
     )
     
+    # CSV Export options
+    parser.add_argument(
+        '--csv',
+        type=str,
+        default='',
+        help='Output CSV file path for survey data (optional; enables CSV export with UTM coordinates)'
+    )
+
+    parser.add_argument(
+        '--coordinate-system',
+        type=str,
+        default='EPSG:4269',
+        help='Coordinate system for UTM conversion (default: EPSG:4269 for NAD83)'
+    )
+    
     return parser
 
 
