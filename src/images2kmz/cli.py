@@ -387,7 +387,41 @@ def run(args: list | None = None) -> int:
                 
                 # Print summary with colored output
                 print_summary(stats, kmz_gen, output_path, console)
-            
+
+                # Phase 4: Export CSV if requested
+                if parsed_args.csv and processed_images:
+                    console.print(f"\n[bold cyan]📊 Exporting CSV file...[/bold cyan]")
+                    logger.info(f"Starting CSV export to {parsed_args.csv}")
+
+                    try:
+                        from .csv_exporter import CSVExporter
+
+                        # Determine output path
+                        if Path(parsed_args.csv).is_absolute():
+                            csv_path = parsed_args.csv
+                        else:
+                            csv_path = str(Path(input_dir) / parsed_args.csv)
+
+                        exporter = CSVExporter(
+                            coordinate_system=parsed_args.coordinate_system,
+                        )
+
+                        csv_output = exporter.export(
+                            processed_images=processed_images,
+                            output_path=csv_path,
+                        )
+
+                        if csv_output:
+                            console.print(f"[green]✓ CSV exported to: {csv_output}[/green]")
+                            logger.info(f"CSV export complete: {csv_output}")
+                        else:
+                            console.print("[yellow]⚠ No data to export to CSV[/yellow]")
+
+                    except Exception as e:
+                        logger.error(f"Error exporting CSV: {e}", exc_info=True)
+                        console.print(f"\n[bold red]Error exporting CSV: {e}[/bold red]")
+                        # Don't fail the whole operation, just warn
+
         except Exception as e:
             logger.error(f"Error generating KMZ file: {e}", exc_info=True)
             console.print(f"\n[bold red]Error generating KMZ file: {e}[/bold red]")
