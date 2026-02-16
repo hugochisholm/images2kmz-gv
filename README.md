@@ -8,6 +8,7 @@ Python CLI tool for creating KMZ (Google Earth) files from geotagged photos.
 - Support for multiple image formats (JPEG, HEIC, PNG)
 - Automatic GPS coordinate extraction
 - Thumbnail generation for Google Earth
+- Compass bearing icon rotation based on photo direction
 - Progress indicators with rich console output
 
 ## Installation
@@ -156,10 +157,12 @@ with KMZGenerator('output.kmz', thumbnail_size=(800, 600)) as kmz:
 1. **Scanning**: The tool scans the specified directory for JPEG images
 2. **HEIC Handling**: If HEIC files are found, optionally converts them to JPEG
 3. **GPS Extraction**: Reads EXIF data from each image to extract GPS coordinates
-4. **Thumbnail Creation**: Generates resized thumbnails (800x600 max, preserving aspect ratio)
-5. **KMZ Generation**: Creates a KMZ file with:
+4. **Compass Bearing**: Extracts photo direction from EXIF GPS data
+5. **Thumbnail Creation**: Generates resized thumbnails (800x600 max, preserving aspect ratio)
+6. **KMZ Generation**: Creates a KMZ file with:
    - Placemarks at each photo's GPS location
    - Photo filename as the placemark name
+   - Directional icon rotated to match photo bearing (if available)
    - Embedded thumbnail in the description balloon
    - Hyperlink to open the original photo
 

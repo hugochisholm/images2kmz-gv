@@ -118,6 +118,17 @@ class KMZGenerator(AbstractContextManager):
         
         pnt = self.kml.newpoint(name=name, coords=coords)
         
+        # Set icon based on photo bearing
+        if bearing and bearing.get('azimuth') is not None:
+            # Use directional track icon with rotation
+            pnt.style.iconstyle.icon.href = 'http://earth.google.com/images/kml-icons/track-directional/track-0.png'
+            pnt.style.iconstyle.heading = bearing['azimuth']
+            pnt.style.iconstyle.scale = 1.4
+        else:
+            # Use non-directional track icon
+            pnt.style.iconstyle.icon.href = 'http://earth.google.com/images/kml-icons/track-directional/track-none.png'
+            pnt.style.iconstyle.scale = 1.4
+        
         # Build description parts
         description_html_parts = []
         

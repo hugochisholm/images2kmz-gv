@@ -211,6 +211,71 @@ class TestKMZGeneratorAddPhoto:
         assert '45° NE' in mock_point.description
         assert 'Direction:' in mock_point.description
 
+    def test_add_photo_with_bearing_sets_icon_style(self):
+        """
+        Test photo with bearing sets directional icon and rotation.
+
+        Should set track-0.png icon with heading rotation.
+        Must use context manager to initialize temp directory.
+        """
+        mock_kml = Mock()
+        mock_kml.addfile.return_value = 'files/thumb.jpg'
+        mock_point = Mock()
+        mock_kml.newpoint.return_value = mock_point
+        
+        with patch('images2kmz.core.simplekml.Kml', return_value=mock_kml):
+            with KMZGenerator('/test.kmz') as generator:
+                gps = GPSData(49.44, -95.41)
+                bearing = {'azimuth': 45, 'compass': 'NE', 'raw_text': 'NE 45°'}
+                
+                generator.add_photo('/photo.jpg', gps, b'thumb', bearing=bearing)
+        
+        # Verify icon style is set correctly
+        assert mock_point.style.iconstyle.icon.href == 'http://earth.google.com/images/kml-icons/track-directional/track-0.png'
+        assert mock_point.style.iconstyle.heading == 45
+
+    def test_add_photo_without_bearing_sets_none_icon(self):
+        """
+        Test photo without bearing sets non-directional icon.
+
+        Should set track-none.png icon without rotation.
+        Must use context manager to initialize temp directory.
+        """
+        mock_kml = Mock()
+        mock_kml.addfile.return_value = 'files/thumb.jpg'
+        mock_point = Mock()
+        mock_kml.newpoint.return_value = mock_point
+        
+        with patch('images2kmz.core.simplekml.Kml', return_value=mock_kml):
+            with KMZGenerator('/test.kmz') as generator:
+                gps = GPSData(49.44, -95.41)
+                
+                generator.add_photo('/photo.jpg', gps, b'thumb')
+        
+        # Verify icon style is set correctly
+        assert mock_point.style.iconstyle.icon.href == 'http://earth.google.com/images/kml-icons/track-directional/track-none.png'
+
+    def test_add_photo_icon_scale(self):
+        """
+        Test that icon scale is set to 1.4.
+
+        Icons should be scaled for visibility.
+        Must use context manager to initialize temp directory.
+        """
+        mock_kml = Mock()
+        mock_kml.addfile.return_value = 'files/thumb.jpg'
+        mock_point = Mock()
+        mock_kml.newpoint.return_value = mock_point
+        
+        with patch('images2kmz.core.simplekml.Kml', return_value=mock_kml):
+            with KMZGenerator('/test.kmz') as generator:
+                gps = GPSData(49.44, -95.41)
+                
+                generator.add_photo('/photo.jpg', gps, b'thumb')
+        
+        # Verify icon scale
+        assert mock_point.style.iconstyle.scale == 1.4
+
     def test_add_photo_temp_file_creation(self):
         """
         Test temporary file creation for thumbnails.
