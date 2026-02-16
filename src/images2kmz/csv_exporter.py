@@ -40,10 +40,11 @@ class CSVExporter:
     def _get_transformer(self) -> Transformer:
         """Get or create the coordinate transformer."""
         if self._transformer is None:
-            # Transform from source CRS to WGS84, then to UTM
+            # Transform from source CRS to WGS84 (EPSG:4326)
+            # GPS coordinates from photos are typically in WGS84
             self._transformer = Transformer.from_crs(
                 self.coordinate_system,
-                "EPSG:4326",  # WGS84 - get lat/lon first
+                "EPSG:4326",  # WGS84
                 always_xy=True,
             )
         return self._transformer
@@ -59,6 +60,9 @@ class CSVExporter:
             EPSG code for the appropriate UTM zone
         """
         # UTM zones are 6 degrees wide, starting at -180
+        # Zone 1: -180 to -174
+        # Zone 31: -6 to 0 (UK starts around -8, so zone 30)
+        # Zone 32: 0 to 6
         zone_number = int((longitude + 180) / 6) + 1
 
         # Determine if northern or southern hemisphere
@@ -81,20 +85,19 @@ class CSVExporter:
         Returns:
             Tuple of (easting, northing) in meters
         """
-        # First transform to WGS84 if needed
-        wgs84_lat, wgs84_lon = self._get_transformer().transform(
-            longitude, latitude
-        )
+        # Determine UTM zone from longitude
+        utm_zone = self._get_utm_zone(longitude)
 
-        # Then transform to appropriate UTM zone
-        utm_zone = self._get_utm_zone(wgs84_lon)
+        # Transform directly to UTM from source CRS
+        # Most GPS data from photos is in WGS84, so this handles that case
+        # For NAD83, the transformation will handle the datum shift if needed
         utm_transformer = Transformer.from_crs(
-            "EPSG:4326",  # WGS84
+            self.coordinate_system,
             utm_zone,
             always_xy=True,
         )
 
-        easting, northing = utm_transformer.transform(wgs84_lon, wgs84_lat)
+        easting, northing = utm_transformer.transform(longitude, latitude)
         return easting, northing
 
     def generate_point_number(self, date: datetime, sequence: int) -> str:
