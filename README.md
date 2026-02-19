@@ -250,10 +250,9 @@ See [AGENTS.md](AGENTS.md) for detailed coding standards and guidelines.
 - Pillow >= 12.0.0
 - simplekml >= 1.3.6
 - rich >= 13.0.0
-- textual >= 0.30.0
-- piexif >= 1.1.3
 - pillow-heif >= 0.10.0
 - pyproj >= 3.6.0
+- exifread
 
 ## Limitations
 

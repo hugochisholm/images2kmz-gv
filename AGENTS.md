@@ -226,7 +226,7 @@ except KeyboardInterrupt:
 ```
 
 ### Dependencies
-- **Core**: GPSPhoto, Pillow, simplekml, rich, textual, piexif, pillow-heif, pyproj
+- **Core**: GPSPhoto, Pillow, simplekml, rich, exifread, pillow-heif, pyproj
 - **Testing**: pytest, pytest-cov
 - **Linting/Formatting** (recommended to add):
   - `ruff>=0.1.0` - Fast Python linter and formatter
