@@ -501,3 +501,96 @@ class TestImageProcessor:
         # Should process some images (depending on GPS availability)
         assert isinstance(result, list)
         assert processor.stats['total_found'] > 0
+
+
+class TestGetCompassBearing:
+    """Tests for get_compass_bearing function."""
+
+    def test_get_compass_bearing_from_sample_image(self):
+        """
+        Test compass bearing is correctly extracted from sample JPEG.
+        
+        Uses IMG_3444.jpg which has GPSImgDirection = 1297996/3681 ≈ 352.6°
+        Expected: azimuth ≈ 353°, compass = 'N', reference = 'True'
+        """
+        from images2kmz.image_processor import get_compass_bearing
+        
+        sample_dir = Path(__file__).parent.parent / "sample-images"
+        image_path = sample_dir / "IMG_3444.jpg"
+        
+        if not image_path.exists():
+            pytest.skip("Sample image IMG_3444.jpg not found")
+        
+        result = get_compass_bearing(str(image_path))
+        
+        assert result is not None
+        assert 'azimuth' in result
+        assert 'compass' in result
+        assert 'reference' in result
+        assert 'raw_text' in result
+        
+        # Verify values are extracted correctly
+        # 1297996/3681 ≈ 352.6° → rounds to 353°
+        assert result['azimuth'] == 353
+        assert result['compass'] == 'N'
+        assert result['reference'] == 'True'
+        assert '353' in result['raw_text']
+        assert 'N' in result['raw_text']
+
+    def test_get_compass_bearing_different_directions(self):
+        """
+        Test compass bearing from multiple sample images with different directions.
+        
+        Verifies that different GPSImgDirection values are correctly parsed.
+        """
+        from images2kmz.image_processor import get_compass_bearing
+        
+        sample_dir = Path(__file__).parent.parent / "sample-images"
+        
+        # IMG_3436.jpg has direction ~262° (W)
+        image_path = sample_dir / "IMG_3436.jpg"
+        if image_path.exists():
+            result = get_compass_bearing(str(image_path))
+            assert result is not None
+            assert result['compass'] == 'W'
+        
+        # IMG_3449.jpg has direction ~132° (SE)
+        image_path = sample_dir / "IMG_3449.jpg"
+        if image_path.exists():
+            result = get_compass_bearing(str(image_path))
+            assert result is not None
+            assert result['compass'] == 'SE'
+
+    def test_get_compass_bearing_no_direction_data(self):
+        """
+        Test compass bearing returns None when no GPS direction in image.
+        
+        Uses an image without GPSImgDirection tag.
+        """
+        from images2kmz.image_processor import get_compass_bearing
+        
+        # Find an image without GPS direction
+        sample_dir = Path(__file__).parent.parent / "sample-images"
+        
+        # Try to find an image without direction data
+        # If all images have direction, this test will be skipped
+        found_without_direction = False
+        for img_file in sample_dir.glob("*.jpg"):
+            result = get_compass_bearing(str(img_file))
+            if result is None:
+                found_without_direction = True
+                break
+        
+        if not found_without_direction:
+            pytest.skip("All sample images have GPS direction data")
+
+    def test_get_compass_bearing_nonexistent_file(self):
+        """
+        Test compass bearing handles nonexistent file gracefully.
+        
+        Should return None without raising exception.
+        """
+        from images2kmz.image_processor import get_compass_bearing
+        
+        result = get_compass_bearing('/nonexistent/image.jpg')
+        assert result is None
