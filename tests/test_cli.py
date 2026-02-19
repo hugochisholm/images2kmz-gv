@@ -143,6 +143,9 @@ class TestRunFunction:
         self.mock_processor_cls = self.mock_processor_patch.start()
         self.mock_processor = Mock()
         self.mock_processor_cls.return_value = self.mock_processor
+        # Setup default returns for new methods
+        self.mock_processor.get_no_gps.return_value = []
+        self.mock_processor.get_no_direction.return_value = []
         
         self.mock_kmz_patch = patch('images2kmz.cli.KMZGenerator')
         self.mock_kmz_cls = self.mock_kmz_patch.start()
@@ -384,7 +387,7 @@ class TestHelpers:
         mock_kmz = Mock()
         mock_kmz.get_formatted_file_size.return_value = "10 MB"
         
-        print_summary(stats, mock_kmz, "/out.kmz", None, mock_console)
+        print_summary(stats, mock_kmz, "/out.kmz", None, [], [], mock_console)
         
         # Verify key info printed
         calls = str(mock_console.print.call_args_list)

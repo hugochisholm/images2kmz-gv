@@ -9,6 +9,9 @@ from datetime import datetime
 from pathlib import Path
 
 from rich.console import Console
+from rich.panel import Panel
+from rich.columns import Columns
+from rich.text import Text
 
 from .core import KMZGenerator
 from .image_processor import ImageProcessor
@@ -161,6 +164,8 @@ def print_summary(
     kmz_generator: KMZGenerator | None,
     output_path: str | None,
     csv_path: str | None = None,
+    no_gps: list[str] | None = None,
+    no_direction: list[str] | None = None,
     console: Console | None = None,
 ):
     """
@@ -210,6 +215,45 @@ def print_summary(
     if csv_path:
         console.print(f"[green]📊 CSV: {Path(csv_path).name}[/green]")
         console.print(f"   [dim]Path: {csv_path}[/dim]")
+    
+    # Files missing location and direction - side by side boxes
+    if no_gps is None:
+        no_gps = []
+    if no_direction is None:
+        no_direction = []
+    
+    # Format content for each box
+    def format_box_content(files: list[str], box_title: str) -> str:
+        if not files:
+            return "[green]None![/green]"
+        # Truncate list if too long (max 50 files to avoid overflow)
+        display_files = files[:50]
+        content = "\n".join(f"  - {f}" for f in display_files)
+        if len(files) > 50:
+            content += f"\n  ... and {len(files) - 50} more"
+        return content
+    
+    gps_content = format_box_content(no_gps, "Files missing location")
+    direction_content = format_box_content(no_direction, "Files missing direction")
+    
+    # Create side-by-side panels
+    gps_panel = Panel(
+        gps_content,
+        title="[bold]Files missing location[/bold]",
+        border_style="yellow",
+        padding=(0, 1),
+        width=40,
+    )
+    direction_panel = Panel(
+        direction_content,
+        title="[bold]Files missing direction[/bold]",
+        border_style="cyan",
+        padding=(0, 1),
+        width=40,
+    )
+    
+    console.print("\n[bold]Files with missing data:[/bold]")
+    console.print(Columns([gps_panel, direction_panel]))
     
     console.print(f"[bold magenta]{separator}[/bold magenta]\n")
 
@@ -350,7 +394,7 @@ def run(args: list | None = None) -> int:
         
         # Check if we have any images to process
         if not processed_images:
-            print_summary(stats, None, None, None, console)
+            print_summary(stats, None, None, None, processor.get_no_gps(), processor.get_no_direction(), console)
             return 0
         
         # Phase 3: Generate KMZ with progress bar
@@ -441,7 +485,7 @@ def run(args: list | None = None) -> int:
                         # Don't fail the whole operation, just warn
                 
                 # Print summary with colored output (after CSV export)
-                print_summary(stats, kmz_gen, output_path, csv_output_path, console)
+                print_summary(stats, kmz_gen, output_path, csv_output_path, processor.get_no_gps(), processor.get_no_direction(), console)
 
         except Exception as e:
             logger.error(f"Error generating KMZ file: {e}", exc_info=True)

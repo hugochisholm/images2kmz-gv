@@ -388,6 +388,8 @@ class ImageProcessor:
             'errors': 0
         }
         self.errors: list[dict] = []  # Collect errors for end-of-run reporting
+        self.no_gps: list[str] = []  # Files without GPS data
+        self.no_direction: list[str] = []  # Files without direction/bearing data
     
     def process_directory(
         self,
@@ -443,6 +445,7 @@ class ImageProcessor:
                     logger.warning(f"Failed to process {filename}: {error_msg}")
                 elif result.get('skipped'):
                     self.stats['skipped_no_gps'] += 1
+                    self.no_gps.append(filename)
                     logger.debug(f"Skipped {filename}: no GPS data")
                 elif result.get('error'):
                     self.stats['errors'] += 1
@@ -452,6 +455,9 @@ class ImageProcessor:
                 else:
                     processed_images.append(result)
                     self.stats['processed'] += 1
+                    # Track files without direction data
+                    if result.get('bearing') is None:
+                        self.no_direction.append(filename)
                     logger.debug(f"Successfully processed {filename}")
 
                 # Fire progress callback
@@ -482,6 +488,7 @@ class ImageProcessor:
                             })
                         elif result.get('skipped'):
                             self.stats['skipped_no_gps'] += 1
+                            self.no_gps.append(filename)
                         elif result.get('error'):
                             self.stats['errors'] += 1
                             self.errors.append({
@@ -491,6 +498,9 @@ class ImageProcessor:
                         else:
                             processed_images.append(result)
                             self.stats['processed'] += 1
+                            # Track files without direction data
+                            if result.get('bearing') is None:
+                                self.no_direction.append(filename)
 
                     except Exception as e:
                         self.stats['errors'] += 1
@@ -516,3 +526,11 @@ class ImageProcessor:
     def get_stats(self) -> dict[str, int]:
         """Get processing statistics."""
         return self.stats.copy()
+    
+    def get_no_gps(self) -> list[str]:
+        """Get list of filenames without GPS data."""
+        return self.no_gps.copy()
+    
+    def get_no_direction(self) -> list[str]:
+        """Get list of filenames without direction data."""
+        return self.no_direction.copy()
