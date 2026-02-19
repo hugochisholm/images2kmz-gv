@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Utility functions for images2kmz package."""
 
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 
 
@@ -21,7 +21,7 @@ def get_absolute_path(path: str | Path) -> str:
 
 def create_file_uri(path: str | Path) -> str:
     """
-    Convert a file path to a file:// URI.
+    Convert a file path to a file:// URI for Windows.
     
     Args:
         path: File path
@@ -30,8 +30,20 @@ def create_file_uri(path: str | Path) -> str:
         file:// URI string
     """
     abs_path = get_absolute_path(path)
-    # Convert to URI format (handles both Unix and Windows paths)
-    return f'file://{abs_path}'
+    
+    # Handle UNC network paths (\\server\share)
+    if abs_path.startswith('\\\\'):
+        # UNC paths need 2 slashes: file://server/share (no leading slash)
+        return f"file://{abs_path.lstrip(chr(92)).replace(chr(92), '/')}"
+    
+    # Handle regular Windows paths (C:\path)
+    if '\\' in abs_path or (len(abs_path) > 1 and abs_path[1] == ':'):
+        win_path = PureWindowsPath(abs_path)
+        return f"file:///{win_path}"
+    
+    # Unix-style paths
+    # Strip leading slash since file:/// already includes the root separator
+    return f"file:///{abs_path.lstrip('/')}"
 
 
 def ensure_directory_exists(path: str | Path) -> None:

@@ -12,7 +12,7 @@ from types import TracebackType
 import simplekml
 
 from .image_processor import GPSData
-from .utils import get_absolute_path, format_file_size
+from .utils import get_absolute_path, format_file_size, create_file_uri
 
 logger = logging.getLogger(__name__)
 
@@ -152,7 +152,7 @@ class KMZGenerator(AbstractContextManager):
         
         # Add link to original photo
         description_html_parts.append(
-            f'<p style="margin-top: 10px;"><a href="file://{abs_photo_path}" target="_blank">Open Original Photo</a></p>'
+            f'<p style="margin-top: 10px;"><a href="{create_file_uri(abs_photo_path)}" target="_blank">Open Original Photo</a></p>'
         )
         
         # Add location coordinates
