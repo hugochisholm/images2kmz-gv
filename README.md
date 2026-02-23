@@ -47,7 +47,7 @@ python -m images2kmz
 You'll be prompted to:
 1. Enter a directory path containing images
 2. Optionally create the directory if it doesn't exist
-3. The generated KMZ file will be saved in the same directory
+3. Output files will be saved to `{input_dir}/images2kmz/` by default
 
 **Supports:** relative paths (`./photos`), absolute paths (`/Users/username/photos`), home directory (`~/photos`), and Windows paths (`C:\Users\username\Pictures`)
 
@@ -93,13 +93,13 @@ images2kmz --help
 #### Command-Line Options
 
 - `input_dir`: Directory containing photos (optional; will prompt if not provided)
-- `-o, --output`: Output KMZ file path (default: `{input_dir}/photos.kmz`)
+- `-o, --output`: Output KMZ file path (default: `{input_dir}/images2kmz/photos.kmz`)
 - `-r, --recursive`: Recursively search subdirectories
 - `--thumbnail-size WIDTH HEIGHT`: Maximum thumbnail dimensions (default: 800 600)
 - `--convert-heic`: Automatically convert HEIC files without prompting
-- `-v, --verbose`: Enable verbose console output (INFO level)
-- `-l, --log-file`: Enable debug log file (default: `{output_dir}/images2kmz.log`)
-- `--csv`: Export photo coordinates to CSV file (default: `{output_dir}/photo_points.csv`)
+- `-v, --verbose`: Enable verbose console output with timestamped log file
+- `-l, --log-file`: Enable debug log file (default: `{input_dir}/images2kmz/images2kmz.log`)
+- `--csv`: Export photo coordinates to CSV file (default: `{input_dir}/images2kmz/photo_points.csv`)
 - `--coordinate-system EPSG`: Override default coordinate system (default: EPSG:4269 NAD83)
 - `--version`: Show version information
 
@@ -108,13 +108,13 @@ images2kmz --help
 Process photos in specified directory:
 ```bash
 images2kmz ~/Photos
-# Output: ~/Photos/photos.kmz
+# Output: ~/Photos/images2kmz/photos.kmz
 ```
 
 Process photos recursively:
 ```bash
 images2kmz ~/Photos -r
-# Output: ~/Photos/photos.kmz
+# Output: ~/Photos/images2kmz/photos.kmz
 ```
 
 Custom output location:

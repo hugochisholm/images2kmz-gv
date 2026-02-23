@@ -48,7 +48,7 @@ def create_parser() -> argparse.ArgumentParser:
         '-o', '--output',
         type=str,
         default='photos.kmz',
-        help='Output KMZ file path (default: photos.kmz)'
+        help='Output KMZ file path (default: {input_dir}/images2kmz/photos.kmz)'
     )
     
     parser.add_argument(
@@ -289,18 +289,18 @@ def run(args: list | None = None) -> int:
         
         # Setup logging based on command-line arguments
         # Determine output directory first (for CSV mode)
-        output_dir = None
         if parsed_args.output != 'photos.kmz':  # Explicit output provided
             output_dir = Path(get_absolute_path(parsed_args.output)).parent
-        # If no explicit output, output_dir remains None (will use input_dir later)
+        else:
+            # No explicit -o: default to {input_dir}/images2kmz/
+            output_dir = Path(input_dir) / 'images2kmz'
         
-        # Default log file: images2kmz.log in output location (if --log-file or --csv)
-        if parsed_args.log_file or parsed_args.csv:
-            log_base = output_dir if output_dir else Path(input_dir)
-            log_file_path = log_base / "images2kmz.log"
-        elif parsed_args.verbose:  # Verbose mode without CSV: create timestamped log
+        # Default log file: images2kmz.log in output location (only with --log-file)
+        if parsed_args.log_file:
+            log_file_path = output_dir / "images2kmz.log"
+        elif parsed_args.verbose:  # Verbose mode: create timestamped log
             timestamp = datetime.now().strftime("%Y-%m-%dT%H%M")
-            log_file_path = Path(input_dir) / f"images2kmz_log_{timestamp}.log"
+            log_file_path = output_dir / f"images2kmz_log_{timestamp}.log"
         else:
             log_file_path = None
         
@@ -402,10 +402,10 @@ def run(args: list | None = None) -> int:
         logger.info(f"Starting KMZ generation with {len(processed_images)} images")
         
         # Determine output path
-        # If -o flag wasn't explicitly provided, use input_dir as default location
+        # output_dir is already resolved above (either explicit parent or {input_dir}/images2kmz/)
         if parsed_args.output == 'photos.kmz':  # Check if using default value
-            # No explicit -o provided, use input directory as output location
-            output_path = get_absolute_path(Path(input_dir) / parsed_args.output)
+            # No explicit -o provided: place photos.kmz inside the images2kmz/ subdirectory
+            output_path = get_absolute_path(output_dir / parsed_args.output)
         else:
             # Explicit -o provided, use as specified (could be relative or absolute)
             output_path = get_absolute_path(parsed_args.output)
@@ -443,10 +443,8 @@ def run(args: list | None = None) -> int:
                 
                 # Phase 4: Export CSV if requested
                 if parsed_args.csv and processed_images:
-                    # Determine output directory for CSV
-                    # Use output location if specified, otherwise use input directory
-                    csv_base_dir = output_dir if output_dir else Path(input_dir)
-                    csv_path = str(csv_base_dir / "photo_points.csv")
+                    # Determine output directory for CSV (always output_dir)
+                    csv_path = str(output_dir / "photo_points.csv")
 
                     console.print(f"\n[bold cyan]📊 Exporting CSV file...[/bold cyan]")
                     logger.info(f"Starting CSV export to {csv_path}")

@@ -293,6 +293,17 @@ logging.getLogger("PIL").setLevel(logging.WARNING)
 logging.getLogger("simplekml").setLevel(logging.WARNING)
 ```
 
+### Default Output Directory
+
+When no explicit `-o` output is specified, all output files go to `{input_dir}/images2kmz/`:
+- KMZ file: `{input_dir}/images2kmz/photos.kmz`
+- CSV file (with `--csv`): `{input_dir}/images2kmz/photo_points.csv`
+- Log file (with `--log-file` or `--verbose`): `{input_dir}/images2kmz/images2kmz.log`
+
+HEIC originals remain in the input directory root (not moved to images2kmz/).
+
+When `-o` is explicitly provided, outputs go to the specified location's parent directory.
+
 ### Git
 - Never commit: `*.kmz`, `*.kml`, sample images (see .gitignore)
 - Never auto-commit - wait for explicit user instruction
