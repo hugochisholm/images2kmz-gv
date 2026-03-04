@@ -11,6 +11,9 @@ Python CLI tool for creating KMZ (Google Earth) files from geotagged photos.
 - Compass bearing icon rotation based on photo direction
 - Progress indicators with rich console output
 - Export to CSV with UTM coordinates for AutoCAD
+- Configurable placemark info fields (direction, location, photo path, description)
+- Preset modes for common configurations (full, minimal, client)
+- ExtendedData support for structured info display in KML balloons
 
 ## Installation
 
@@ -86,6 +89,15 @@ images2kmz /path/to/photos --csv
 # Export CSV with custom coordinate system (default: NAD83/EPSG:4269)
 images2kmz /path/to/photos --csv --coordinate-system EPSG:4326
 
+# Control placemark info card fields
+images2kmz /path/to/photos --placemark-fields=location,description
+
+# Use preset for placemark fields (full/minimal/client/none)
+images2kmz /path/to/photos --preset=client
+
+# Hide photo path link (for external sharing - backward compatible)
+images2kmz /path/to/photos --no-photo-path
+
 # Show help
 images2kmz --help
 ```
@@ -101,6 +113,9 @@ images2kmz --help
 - `-l, --log-file`: Enable debug log file (default: `{input_dir}/images2kmz/images2kmz.log`)
 - `--csv`: Export photo coordinates to CSV file (default: `{input_dir}/images2kmz/photo_points.csv`)
 - `--coordinate-system EPSG`: Override default coordinate system (default: EPSG:4269 NAD83)
+- `--placemark-fields FIELDS`: Comma-separated fields to include in placemark info (direction,location,photo_path,description,all)
+- `--preset PRESET`: Use preset configuration (full/minimal/client/none)
+- `--no-photo-path`: Don't include photo path link in placemark (for external sharing)
 - `--version`: Show version information
 
 #### Examples
@@ -133,12 +148,24 @@ Custom thumbnail size:
 images2kmz ~/Photos --thumbnail-size 1024 768
 ```
 
+Control placemark info fields:
+```bash
+# Show only location and description (no direction or photo path)
+images2kmz ~/Photos --placemark-fields=location,description
+
+# Use client preset (no photo path - good for external sharing)
+images2kmz ~/Photos --preset=client
+
+# Minimal mode - thumbnail only, no info fields
+images2kmz ~/Photos --preset=minimal
+```
+
 ### As a Python Module
 
 You can also import and use images2kmz in your own Python scripts:
 
 ```python
-from images2kmz import ImageProcessor, KMZGenerator
+from images2kmz import ImageProcessor, KMZGenerator, PlacemarkConfig
 
 # Process images (parallel processing with up to 8 workers by default)
 processor = ImageProcessor(thumbnail_size=(800, 600), max_workers=4)
@@ -149,8 +176,12 @@ stats = processor.get_stats()
 print(f"Processed {stats['processed']} photos")
 print(f"Skipped {stats['skipped_no_gps']} photos without GPS")
 
+# Configure placemark fields
+config = PlacemarkConfig.from_preset('client')  # No photo path for external sharing
+# Or: config = PlacemarkConfig(show_direction=False, show_location=True)
+
 # Generate KMZ (using context manager for automatic cleanup)
-with KMZGenerator('output.kmz', thumbnail_size=(800, 600)) as kmz:
+with KMZGenerator('output.kmz', thumbnail_size=(800, 600), placemark_config=config) as kmz:
     for img in images:
         kmz.add_photo(
             photo_path=img['path'],
@@ -173,7 +204,8 @@ with KMZGenerator('output.kmz', thumbnail_size=(800, 600)) as kmz:
    - Photo filename as the placemark name
    - Directional icon rotated to match photo bearing (if available)
    - Embedded thumbnail in the description balloon
-   - Hyperlink to open the original photo
+   - ExtendedData with structured info (direction, location, photo path, description)
+   - Hyperlink to open the original photo (configurable)
 
 ## Output
 
@@ -184,7 +216,8 @@ The generated KMZ file can be opened in:
 
 When you click on a placemark:
 - The thumbnail image is displayed
-- A link to the original photo allows you to open the full-resolution image
+- A structured info table shows direction, location, and photo path (based on configuration)
+- A link to the original photo allows you to open the full-resolution image (if enabled)
 
 ## Project Structure
 
@@ -201,6 +234,8 @@ images2kmz/
 │       ├── image_processor.py   # Image handling (thumbnails, EXIF)
 │       ├── csv_exporter.py      # CSV export with UTM coordinates
 │       ├── heic_handler.py      # HEIC detection and conversion
+│       ├── placemark_config.py   # Placemark field configuration
+│       ├── placemark_html_builder.py  # HTML/ExtendedData generation
 │       ├── logging_config.py    # Logging configuration
 │       ├── progress.py          # Progress bar utilities
 │       └── utils.py             # Utility functions

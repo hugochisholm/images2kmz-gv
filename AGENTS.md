@@ -111,6 +111,7 @@ from rich.console import Console
 
 from images2kmz.core import KMZGenerator
 from images2kmz.image_processor import ImageProcessor
+from images2kmz.placemark_config import PlacemarkConfig
 ```
 
 ### Formatting & Types
@@ -171,6 +172,8 @@ images2kmz/
 │       ├── image_processor.py   # Image processing (GPS extraction, thumbnails)
 │       ├── csv_exporter.py     # CSV export with UTM coordinates
 │       ├── heic_handler.py      # HEIC format conversion
+│       ├── placemark_config.py   # Placemark field configuration
+│       ├── placemark_html_builder.py  # HTML/ExtendedData generation
 │       ├── logging_config.py    # Logging configuration
 │       ├── progress.py          # Progress display utilities
 │       └── utils.py             # Utility functions (paths, formatting)
@@ -181,6 +184,8 @@ images2kmz/
 │   ├── test_image_processor.py
 │   ├── test_csv_exporter.py
 │   ├── test_heic_handler.py
+│   ├── test_placemark_config.py
+│   ├── test_placemark_html_builder.py
 │   ├── test_progress.py
 │   └── test_utils.py
 ├── setup.py               # Package configuration
