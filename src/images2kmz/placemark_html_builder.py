@@ -12,10 +12,12 @@ logger = logging.getLogger(__name__)
 
 
 class PlacemarkHtmlBuilder:
-    """Builds HTML for placemark info card.
+    """Builds HTML for placemark info cards.
 
     Generates HTML descriptions for KML placemarks based on
     a PlacemarkConfig to control which fields are displayed.
+    
+    Uses ExtendedData for structured data display in KML balloons.
     """
 
     def __init__(self, config: PlacemarkConfig | None = None):
@@ -25,6 +27,103 @@ class PlacemarkHtmlBuilder:
             config: Field visibility config. Defaults to full config (all fields shown).
         """
         self.config = config or PlacemarkConfig()
+
+    def build_description_html(
+        self,
+        embedded_path: str,
+    ) -> str:
+        """Build HTML for the placemark description (thumbnail only).
+
+        Args:
+            embedded_path: Path to thumbnail within KMZ archive.
+
+        Returns:
+            HTML string wrapped in CDATA for KML compatibility.
+        """
+        html = f'''
+<![CDATA[
+<div class="placemark-container">
+    <div class="thumbnail-wrapper">
+        <img src="{embedded_path}" class="thumbnail" />
+    </div>
+</div>
+]]>
+'''
+        return html
+
+    def build_extended_data(
+        self,
+        abs_photo_path: str,
+        gps_data: GPSData,
+        description_text: str | None = None,
+        bearing: dict | None = None,
+    ) -> str:
+        """Build ExtendedData XML elements for the placemark.
+
+        Args:
+            abs_photo_path: Absolute path to original photo file.
+            gps_data: GPS coordinates for the photo.
+            description_text: Optional EXIF description text.
+            bearing: Optional compass bearing data with 'raw_text' and 'azimuth' keys.
+
+        Returns:
+            ExtendedData XML string.
+        """
+        data_elements = []
+
+        # Direction (compass bearing)
+        if self.config.show_direction and bearing and bearing.get('raw_text'):
+            data_elements.append(
+                f'<Data name="direction"><value>{bearing["raw_text"]}</value></Data>'
+            )
+
+        # Location (coordinates)
+        if self.config.show_location:
+            data_elements.append(
+                f'<Data name="location"><value>{gps_data.latitude:.6f}, {gps_data.longitude:.6f}</value></Data>'
+            )
+
+        # Photo path link
+        if self.config.show_photo_path:
+            data_elements.append(
+                f'<Data name="photoPath"><value>{create_file_uri(abs_photo_path)}</value></Data>'
+            )
+
+        # Description
+        if self.config.show_description and description_text:
+            # Escape XML characters in description
+            escaped_desc = description_text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            data_elements.append(
+                f'<Data name="description"><value>{escaped_desc}</value></Data>'
+            )
+
+        if not data_elements:
+            return ''
+
+        return f'<ExtendedData>{chr(10).join(data_elements)}</ExtendedData>'
+
+    @staticmethod
+    def build_balloon_style() -> str:
+        """Build BalloonStyle with template for ExtendedData display.
+
+        Returns:
+            BalloonStyle XML string.
+        """
+        return '''<Style id="placemark-balloon">
+  <BalloonStyle>
+    <text><![CDATA[
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 400px;">
+        <div style="text-align: center; background: #1a1a1a; padding: 8px; border-radius: 8px; margin-bottom: 12px;">
+          <img src="$[imageUrl]" style="max-width: 100%; max-height: 400px; border-radius: 4px;" />
+        </div>
+        <div style="background: #f8f9fa; border-radius: 8px; padding: 12px; font-size: 13px;">
+          $[description]
+        </div>
+      </div>
+    ]]></text>
+    <bgColor>ffffffff</bgColor>
+  </BalloonStyle>
+</Style>'''
 
     def build(
         self,

@@ -14,7 +14,7 @@ import simplekml
 from .image_processor import GPSData
 from .placemark_config import PlacemarkConfig
 from .placemark_html_builder import PlacemarkHtmlBuilder
-from .utils import get_absolute_path, format_file_size
+from .utils import get_absolute_path, format_file_size, create_file_uri
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +77,53 @@ class KMZGenerator(AbstractContextManager):
             logger.error("Exception occurred in KMZGenerator context: %s", exc_val, exc_info=True)
         self.cleanup()
     
+    def _add_extended_data(
+        self,
+        pnt,
+        abs_photo_path: str,
+        gps_data: GPSData,
+        description_text: str | None = None,
+        bearing: dict | None = None,
+    ) -> None:
+        """Add ExtendedData elements to placemark for structured display.
+
+        Args:
+            pnt: The simplekml Point object
+            abs_photo_path: Absolute path to original photo
+            gps_data: GPS coordinates
+            description_text: Optional description text
+            bearing: Optional bearing data
+        """
+        # Direction (compass bearing)
+        if self.placemark_config.show_direction and bearing and bearing.get('raw_text'):
+            pnt.extendeddata.newdata(
+                name='direction',
+                value=bearing['raw_text']
+            )
+
+        # Location (coordinates)
+        if self.placemark_config.show_location:
+            pnt.extendeddata.newdata(
+                name='location',
+                value=f'{gps_data.latitude:.6f}, {gps_data.longitude:.6f}'
+            )
+
+        # Photo path link
+        if self.placemark_config.show_photo_path:
+            pnt.extendeddata.newdata(
+                name='photoPath',
+                value=create_file_uri(abs_photo_path)
+            )
+
+        # Description
+        if self.placemark_config.show_description and description_text:
+            # Escape XML characters
+            escaped_desc = description_text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            pnt.extendeddata.newdata(
+                name='description',
+                value=escaped_desc
+            )
+    
     def add_photo(self, photo_path: str, gps_data: GPSData, 
                   thumbnail_bytes: bytes, name: str | None = None,
                   description_text: str | None = None,
@@ -137,6 +184,15 @@ class KMZGenerator(AbstractContextManager):
         # Generate description using HTML builder
         pnt.description = self._html_builder.build(
             embedded_path=embedded_path,
+            abs_photo_path=abs_photo_path,
+            gps_data=gps_data,
+            description_text=description_text,
+            bearing=bearing
+        )
+        
+        # Add ExtendedData for structured info display in balloon
+        self._add_extended_data(
+            pnt=pnt,
             abs_photo_path=abs_photo_path,
             gps_data=gps_data,
             description_text=description_text,
