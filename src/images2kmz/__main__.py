@@ -10,16 +10,10 @@ Example:
     $ python -m images2kmz /path/to/photos --output result.kmz
 """
 
-"""Entry point for running images2kmz as a module.
-
-This module allows the package to be executed directly using:
-    python -m images2kmz
-
-It serves as the main entry point when the package is run as a script,
-delegating to the CLI main function for argument parsing and execution.
-"""
+from multiprocessing import freeze_support
 
 from .cli import main
 
 if __name__ == '__main__':
+    freeze_support()
     main()
