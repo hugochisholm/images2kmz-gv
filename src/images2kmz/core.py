@@ -12,7 +12,9 @@ from types import TracebackType
 import simplekml
 
 from .image_processor import GPSData
-from .utils import get_absolute_path, format_file_size, create_file_uri
+from .placemark_config import PlacemarkConfig
+from .placemark_html_builder import PlacemarkHtmlBuilder
+from .utils import get_absolute_path, format_file_size
 
 logger = logging.getLogger(__name__)
 
@@ -35,19 +37,22 @@ class KMZGenerator(AbstractContextManager):
         output_path: str,
         thumbnail_size: tuple[int, int] = (800, 600),
         progress_callback: Callable[[int, int, str], None] | None = None,
+        placemark_config: PlacemarkConfig | None = None,
     ):
-        """
-        Initialize KMZ generator.
+        """Initialize KMZ generator.
 
         Args:
             output_path: Path for output KMZ file
             thumbnail_size: Maximum thumbnail dimensions (for reference)
             progress_callback: Optional callback(current, total, filename) for progress tracking
+            placemark_config: Configuration for placemark info card fields
         """
         self.output_path = output_path
         self.thumbnail_size = thumbnail_size
         self.kml = simplekml.Kml()
         self.progress_callback = progress_callback
+        self.placemark_config = placemark_config or PlacemarkConfig()
+        self._html_builder = PlacemarkHtmlBuilder(self.placemark_config)
         self.stats = {
             'photos_added': 0,
             'total_size': 0
@@ -129,47 +134,14 @@ class KMZGenerator(AbstractContextManager):
             pnt.style.iconstyle.icon.href = 'http://earth.google.com/images/kml-icons/track-directional/track-none.png'
             pnt.style.iconstyle.scale = 1.4
         
-        # Build description parts
-        description_html_parts = []
-        
-        # Add thumbnail image
-        description_html_parts.append(
-            f'<img src="{embedded_path}" style="max-width: 800px; max-height: 600px; width: auto; height: auto;" /><br/>'
+        # Generate description using HTML builder
+        pnt.description = self._html_builder.build(
+            embedded_path=embedded_path,
+            abs_photo_path=abs_photo_path,
+            gps_data=gps_data,
+            description_text=description_text,
+            bearing=bearing
         )
-        
-        # Add custom description if available (bold, with line breaks replacing " - ")
-        if description_text:
-            formatted_desc = description_text.replace(' - ', '<br/>')
-            description_html_parts.append(
-                f'<p style="font-weight: bold; margin: 10px 0;">{formatted_desc}</p>'
-            )
-        
-        # Add compass bearing if available (displayed above location)
-        if bearing and bearing.get('raw_text'):
-            description_html_parts.append(
-                f'<p style="margin-top: 10px; font-size: 0.95em;">Direction: {bearing["raw_text"]}</p>'
-            )
-        
-        # Add link to original photo
-        description_html_parts.append(
-            f'<p style="margin-top: 10px;"><a href="{create_file_uri(abs_photo_path)}" target="_blank">Open Original Photo</a></p>'
-        )
-        
-        # Add location coordinates
-        description_html_parts.append(
-            f'<p style="font-size: 0.9em; color: #666;">Location: {gps_data.latitude:.6f}, {gps_data.longitude:.6f}</p>'
-        )
-        
-        # Combine all parts
-        description = f'''
-        <![CDATA[
-        <div style="font-family: Arial, sans-serif;">
-            {''.join(description_html_parts)}
-        </div>
-        ]]>
-        '''
-        
-        pnt.description = description
         
         # Track stats
         self.stats['photos_added'] += 1

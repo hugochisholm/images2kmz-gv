@@ -16,6 +16,7 @@ from rich.text import Text
 from .core import KMZGenerator
 from .image_processor import ImageProcessor
 from .heic_handler import HEICHandler, batch_convert_heic
+from .placemark_config import PlacemarkConfig
 from .utils import get_absolute_path
 from .progress import ProgressBar, create_progress_callback
 from .logging_config import setup_logging
@@ -96,6 +97,32 @@ def create_parser() -> argparse.ArgumentParser:
         action='store_true',
         help='Export photo points to CSV file (photo_points.csv) in output directory'
     )
+    
+    parser.add_argument(
+        '--no-photo-path',
+        action='store_true',
+        help='Do not include the local file path link in the placemark description'
+    )
+
+    parser.add_argument(
+        '--placemark-fields',
+        type=str,
+        default=None,
+        help='Comma-separated fields to include: direction,location,photo_path,description,all. '
+             'Example: --placemark-fields=location,description'
+    )
+
+    parser.add_argument(
+        '--preset',
+        type=str,
+        choices=['full', 'minimal', 'client', 'none'],
+        default=None,
+        help='Preset configuration: '
+             'full (all fields, default), '
+             'minimal (thumbnail only), '
+             'client (no photo path, for external sharing), '
+             'none (empty info card)'
+    )
 
     parser.add_argument(
         '--coordinate-system',
@@ -105,6 +132,38 @@ def create_parser() -> argparse.ArgumentParser:
     )
     
     return parser
+
+
+def resolve_placemark_config(args: argparse.Namespace) -> PlacemarkConfig:
+    """Resolve placemark config from CLI arguments.
+
+    Priority order:
+    1. --preset (highest)
+    2. --placemark-fields
+    3. --no-photo-path (backward compatibility)
+    4. Default (all fields)
+
+    Args:
+        args: Parsed command-line arguments
+
+    Returns:
+        PlacemarkConfig instance configured based on arguments
+    """
+    # Preset takes highest priority
+    if args.preset:
+        return PlacemarkConfig.from_preset(args.preset)
+
+    # Explicit fields list
+    if args.placemark_fields:
+        fields = [f.strip() for f in args.placemark_fields.split(',')]
+        return PlacemarkConfig.from_fields_list(fields)
+
+    # Backward compatibility with --no-photo-path
+    if args.no_photo_path:
+        return PlacemarkConfig(show_photo_path=False)
+
+    # Default: all fields enabled
+    return PlacemarkConfig()
 
 
 def print_header(console: Console | None = None) -> None:
@@ -412,8 +471,15 @@ def run(args: list | None = None) -> int:
         
         logger.info(f"Output path: {output_path}")
         
+        # Resolve placemark config from CLI arguments
+        placemark_config = resolve_placemark_config(parsed_args)
+        
         try:
-            with KMZGenerator(output_path, thumbnail_size=thumbnail_size) as kmz_gen:
+            with KMZGenerator(
+                output_path, 
+                thumbnail_size=thumbnail_size,
+                placemark_config=placemark_config
+            ) as kmz_gen:
                 kmz_progress = ProgressBar("Adding photos", console=console)
                 kmz_progress.start(len(processed_images))
                 try:

@@ -26,6 +26,8 @@ from .heic_handler import (
     convert_heic_to_jpg,
     batch_convert_heic
 )
+from .placemark_config import PlacemarkConfig
+from .placemark_html_builder import PlacemarkHtmlBuilder
 from .utils import (
     get_absolute_path,
     create_file_uri,
@@ -51,6 +53,9 @@ __all__ = [
     'find_heic_files',
     'convert_heic_to_jpg',
     'batch_convert_heic',
+    # Placemark configuration
+    'PlacemarkConfig',
+    'PlacemarkHtmlBuilder',
     # Utilities
     'get_absolute_path',
     'create_file_uri',

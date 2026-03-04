@@ -25,6 +25,7 @@ class TestKMZGeneratorInit:
         assert generator.output_path == '/test/output.kmz'
         assert generator.thumbnail_size == (800, 600)
         assert generator.progress_callback is None
+        assert generator.placemark_config.show_photo_path is True
         assert generator.stats == {'photos_added': 0, 'total_size': 0}
         assert generator._temp_dir is None
 
@@ -35,15 +36,18 @@ class TestKMZGeneratorInit:
         Should store all custom values correctly.
         """
         callback = lambda x, y, z: None
+        from images2kmz.placemark_config import PlacemarkConfig
         generator = KMZGenerator(
             '/test/output.kmz',
             thumbnail_size=(400, 300),
-            progress_callback=callback
+            progress_callback=callback,
+            placemark_config=PlacemarkConfig(show_photo_path=False)
         )
         
         assert generator.output_path == '/test/output.kmz'
         assert generator.thumbnail_size == (400, 300)
         assert generator.progress_callback is callback
+        assert generator.placemark_config.show_photo_path is False
 
     @patch('images2kmz.core.simplekml.Kml')
     def test_init_creates_kml_instance(self, mock_kml_class):
@@ -186,6 +190,29 @@ class TestKMZGeneratorAddPhoto:
         assert mock_point.description is not None
         assert 'Point A' in mock_point.description
         assert '<br/>' in mock_point.description
+
+    def test_add_photo_without_photo_path(self):
+        """
+        Test photo addition without photo path link.
+        
+        Should not include 'Open Original Photo' link when include_photo_path is False.
+        """
+        mock_kml = Mock()
+        mock_kml.addfile.return_value = 'files/thumb.jpg'
+        mock_point = Mock()
+        mock_kml.newpoint.return_value = mock_point
+        
+        from images2kmz.placemark_config import PlacemarkConfig
+        with patch('images2kmz.core.simplekml.Kml', return_value=mock_kml):
+            with KMZGenerator('/test.kmz', placemark_config=PlacemarkConfig(show_photo_path=False)) as generator:
+                gps = GPSData(49.44, -95.41)
+                
+                generator.add_photo('/photo.jpg', gps, b'thumb')
+        
+        # Verify description does NOT contain link
+        assert mock_point.description is not None
+        assert 'Open Original Photo' not in mock_point.description
+        assert 'file://' not in mock_point.description
 
     def test_add_photo_with_bearing(self):
         """
@@ -374,6 +401,27 @@ class TestKMZGeneratorAddPhoto:
                 assert mock_point.description is not None
                 assert '49.441272' in mock_point.description
                 assert '-95.405539' in mock_point.description
+                
+    def test_generate_description_uses_html_builder(self):
+        """
+        Test that HTML description is generated using PlacemarkHtmlBuilder.
+        """
+        mock_kml = Mock()
+        with patch('images2kmz.core.simplekml.Kml', return_value=mock_kml):
+            generator = KMZGenerator('/test.kmz')
+            gps = GPSData(latitude=49.44, longitude=-95.41)
+            
+            html = generator._html_builder.build(
+                embedded_path='files/thumb.jpg',
+                abs_photo_path='/path/to/photo.jpg',
+                gps_data=gps
+            )
+            
+            # Check for key structural elements in new HTML format
+            assert 'files/thumb.jpg' in html
+            assert '<img' in html
+            assert 'Location:' in html
+            assert '49.440000, -95.410000' in html
 
 
 class TestKMZGeneratorSave:
