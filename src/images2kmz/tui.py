@@ -61,11 +61,22 @@ class TextualUIHandler(UIHandler):
 class Images2KMZApp(App):
     CSS = """
     .form-container { padding: 1; height: auto; }
+    #middle-groups {
+        height: auto;
+        min-height: 20;
+    }
     .group-container { 
         border: round gray; 
         margin-bottom: 1; 
         padding: 1;
         height: auto;
+    }
+    #middle-groups .group-container {
+        width: 1fr;
+        margin-right: 1;
+    }
+    #middle-groups .group-container:last-child {
+        margin-right: 0;
     }
     .group-label {
         margin-bottom: 1;
@@ -89,6 +100,8 @@ class Images2KMZApp(App):
         self.inputs = {}
 
     def compose(self) -> ComposeResult:
+        from textual.containers import Vertical, Horizontal
+        
         yield Header()
         with VerticalScroll(classes="form-container", id="form-container"):
             added_actions = set()
@@ -98,7 +111,7 @@ class Images2KMZApp(App):
             def create_widget(action):
                 friendly_labels = {
                     "input_dir": "Input Directory",
-                    "output": "Output KMZ Path",
+                    "output": "Output Directory",
                     "recursive": "Recursive Search",
                     "thumbnail_size": "Thumbnail Size (W,H)",
                     "preset": "Placemark Preset",
@@ -126,22 +139,38 @@ class Images2KMZApp(App):
                     default_val = str(action.default) if action.default is not None else ""
                     if action.dest == "output":
                         default_val = ""
-                        label = "Output KMZ Path (Default: <input_dir>/images2kmz/photos.kmz)"
+                        label = "Output Directory (Default: <input_dir>/images2kmz/photos.kmz)"
                     elif isinstance(action.default, list):
                         default_val = ",".join(map(str, action.default))
                     inp = Input(placeholder=label, value=default_val, id=f"input_{action.dest}")
                     self.inputs[action.dest] = inp
                     return inp
 
-            for group_name, dests in self.FLAG_GROUPS.items():
-                group_actions = [actions_by_dest[d] for d in dests if d in actions_by_dest]
-                if group_actions:
-                    with Vertical(classes="group-container"):
-                        yield Label(f"[bold cyan]{group_name}[/bold cyan]", classes="group-label")
-                        for action in group_actions:
-                            yield create_widget(action)
-                            added_actions.add(action.dest)
-            
+            # 1. Paths & Files (Top, Full Width)
+            group_name = "Paths & Files"
+            dests = self.FLAG_GROUPS[group_name]
+            if any(d in actions_by_dest for d in dests):
+                with Vertical(classes="group-container"):
+                    yield Label(f"[bold cyan]{group_name}[/bold cyan]", classes="group-label")
+                    for d in dests:
+                        if d in actions_by_dest:
+                            yield create_widget(actions_by_dest[d])
+                            added_actions.add(d)
+
+            # 2. Middle Groups (Horizontal)
+            middle_group_names = ["Processing", "Placemark Content", "Export & Logs"]
+            if any(d in actions_by_dest for g in middle_group_names for d in self.FLAG_GROUPS[g]):
+                with Horizontal(id="middle-groups"):
+                    for group_name in middle_group_names:
+                        dests = self.FLAG_GROUPS[group_name]
+                        with Vertical(classes="group-container"):
+                            yield Label(f"[bold cyan]{group_name}[/bold cyan]", classes="group-label")
+                            for d in dests:
+                                if d in actions_by_dest:
+                                    yield create_widget(actions_by_dest[d])
+                                    added_actions.add(d)
+
+            # 3. Other Options
             remaining_actions = [a for d, a in actions_by_dest.items() if d not in added_actions]
             if remaining_actions:
                 with Vertical(classes="group-container"):
