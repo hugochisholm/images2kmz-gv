@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import os
-from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
@@ -371,16 +370,14 @@ def get_image_files(directory: str, recursive: bool = False) -> list[str]:
 class ImageProcessor:
     """High-level image processing coordinator."""
 
-    def __init__(self, thumbnail_size: tuple[int, int] = (800, 600), max_workers: int | None = None):
+    def __init__(self, thumbnail_size: tuple[int, int] = (800, 600)):
         """
         Initialize image processor.
 
         Args:
             thumbnail_size: Maximum dimensions for thumbnails
-            max_workers: Maximum number of parallel workers (default: min(CPU count, 8))
         """
         self.thumbnail_size = thumbnail_size
-        self.max_workers = max_workers if max_workers is not None else min(os.cpu_count() or 1, 8)
         self.stats = {
             'total_found': 0,
             'processed': 0,
@@ -421,7 +418,7 @@ class ImageProcessor:
         self.stats['total_found'] = len(image_files)
         self.errors = []  # Reset error collection
 
-        logger.info(f"Starting processing of {len(image_files)} image(s) in '{directory}' (recursive={recursive}, workers={self.max_workers})")
+        logger.info(f"Starting processing of {len(image_files)} image(s) in '{directory}' (recursive={recursive})")
 
         processed_images = []
         completed = 0
@@ -429,100 +426,38 @@ class ImageProcessor:
         # Prepare arguments for parallel processing
         process_args = [(path, self.thumbnail_size) for path in image_files]
 
-        # Run synchronously when max_workers=1 (useful for testing with mocks)
-        if self.max_workers == 1:
-            for args in process_args:
-                completed += 1
-                image_path = args[0]
-                filename = Path(image_path).name
+        for args in process_args:
+            completed += 1
+            image_path = args[0]
+            filename = Path(image_path).name
 
-                result = _process_single_image(args)
+            result = _process_single_image(args)
 
-                if result is None:
-                    self.stats['errors'] += 1
-                    error_msg = 'Unknown error during processing'
-                    self.errors.append({'path': image_path, 'error': error_msg})
-                    logger.warning(f"Failed to process {filename}: {error_msg}")
-                elif result.get('skipped'):
-                    self.stats['skipped_no_gps'] += 1
-                    self.no_gps.append(filename)
-                    logger.debug(f"Skipped {filename}: no GPS data")
-                elif result.get('error'):
-                    self.stats['errors'] += 1
-                    error_msg = result.get('error_message', 'Unknown error')
-                    self.errors.append({'path': image_path, 'error': error_msg})
-                    logger.warning(f"Failed to process {filename}: {error_msg}")
-                else:
-                    processed_images.append(result)
-                    self.stats['processed'] += 1
-                    # Track files without direction data
-                    if result.get('bearing') is None:
-                        self.no_direction.append(filename)
-                    logger.debug(f"Successfully processed {filename}")
+            if result is None:
+                self.stats['errors'] += 1
+                error_msg = 'Unknown error during processing'
+                self.errors.append({'path': image_path, 'error': error_msg})
+                logger.warning(f"Failed to process {filename}: {error_msg}")
+            elif result.get('skipped'):
+                self.stats['skipped_no_gps'] += 1
+                self.no_gps.append(filename)
+                logger.debug(f"Skipped {filename}: no GPS data")
+            elif result.get('error'):
+                self.stats['errors'] += 1
+                error_msg = result.get('error_message', 'Unknown error')
+                self.errors.append({'path': image_path, 'error': error_msg})
+                logger.error(f"Failed to process {filename}: {error_msg}")
+            else:
+                self.stats['processed'] += 1
+                if 'bearing' not in result or result['bearing'] is None:
+                    self.no_direction.append(filename)
+                processed_images.append(result)
 
-                # Fire progress callback
-                if progress_callback:
-                    progress_callback(completed, len(image_files), filename)
-        else:
-            with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
-                # Submit all tasks and map to futures
-                future_to_path = {
-                    executor.submit(_process_single_image, args): args[0]
-                    for args in process_args
-                }
-
-                # Process completed tasks as they finish
-                for future in as_completed(future_to_path):
-                    completed += 1
-                    image_path = future_to_path[future]
-                    filename = Path(image_path).name
-
-                    try:
-                        result = future.result()
-
-                        if result is None:
-                            self.stats['errors'] += 1
-                            self.errors.append({
-                                'path': image_path,
-                                'error': 'Unknown error during processing'
-                            })
-                        elif result.get('skipped'):
-                            self.stats['skipped_no_gps'] += 1
-                            self.no_gps.append(filename)
-                        elif result.get('error'):
-                            self.stats['errors'] += 1
-                            self.errors.append({
-                                'path': image_path,
-                                'error': result.get('error_message', 'Unknown error')
-                            })
-                        else:
-                            processed_images.append(result)
-                            self.stats['processed'] += 1
-                            # Track files without direction data
-                            if result.get('bearing') is None:
-                                self.no_direction.append(filename)
-
-                    except Exception as e:
-                        self.stats['errors'] += 1
-                        self.errors.append({
-                            'path': image_path,
-                            'error': str(e)
-                        })
-
-                    # Fire progress callback
-                    if progress_callback:
-                        progress_callback(completed, len(image_files), filename)
+            # Fire progress callback
+            if progress_callback:
+                progress_callback(completed, len(image_files), filename)
 
         return processed_images
-
-    def get_errors(self) -> list[dict]:
-        """Get list of errors collected during processing.
-
-        Returns:
-            List of dicts with 'path' and 'error' keys
-        """
-        return self.errors.copy()
-    
     def get_stats(self) -> dict[str, int]:
         """Get processing statistics."""
         return self.stats.copy()

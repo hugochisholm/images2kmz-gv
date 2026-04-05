@@ -424,8 +424,7 @@ def execute_run(parsed_args: argparse.Namespace, ui: UIHandler) -> int:
         
         # Phase 2: Process images with progress bar
         thumbnail_size = tuple(parsed_args.thumbnail_size)
-        is_tui = getattr(parsed_args, 'tui', False)
-        processor = ImageProcessor(thumbnail_size=thumbnail_size, use_multiprocessing=not is_tui)
+        processor = ImageProcessor(thumbnail_size=thumbnail_size)
         
         from .image_processor import get_image_files
         

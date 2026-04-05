@@ -456,13 +456,12 @@ class TestImageProcessor:
         Test process_directory method.
 
         Should process images and return results.
-        Uses max_workers=1 to avoid ProcessPoolExecutor issues with mocks.
         """
         mock_get_files.return_value = ['/img1.jpg', '/img2.jpg']
         mock_gps.return_value = GPSData(49.441272, -95.405539)
         mock_thumbnail.return_value = b'fake_thumbnail'
 
-        processor = ImageProcessor(thumbnail_size=(400, 300), max_workers=1)
+        processor = ImageProcessor(thumbnail_size=(400, 300))
         result = processor.process_directory('/test/dir', recursive=False)
 
         assert len(result) == 2
