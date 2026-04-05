@@ -3,7 +3,7 @@ from typing import Dict, Any, Optional, List
 from pathlib import Path
 
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Input, Checkbox, Select, Button, RichLog, ProgressBar as TextualProgressBar
+from textual.widgets import Header, Footer, Input, Checkbox, Select, Button, RichLog, ProgressBar as TextualProgressBar, Label
 from textual.containers import VerticalScroll, Vertical
 from textual import work
 
@@ -61,9 +61,27 @@ class TextualUIHandler(UIHandler):
 class Images2KMZApp(App):
     CSS = """
     .form-container { padding: 1; height: auto; }
+    .group-container { 
+        border: round gray; 
+        margin-bottom: 1; 
+        padding: 1;
+        height: auto;
+    }
+    .group-label {
+        margin-bottom: 1;
+        text-align: center;
+        width: 100%;
+    }
     .log-container { height: 1fr; border: solid green; }
-    #btn_run { margin-top: 1; }
+    #btn_run { margin-top: 1; width: 100%; }
     """
+
+    FLAG_GROUPS = {
+        "Paths & Files": ["input_dir", "output"],
+        "Processing": ["recursive", "thumbnail_size"],
+        "Placemark Content": ["preset", "placemark_fields", "no_photo_path"],
+        "Export & Logs": ["csv", "coordinate_system", "log_file", "verbose"],
+    }
 
     def __init__(self, parser: argparse.ArgumentParser):
         super().__init__()
@@ -73,31 +91,64 @@ class Images2KMZApp(App):
     def compose(self) -> ComposeResult:
         yield Header()
         with VerticalScroll(classes="form-container", id="form-container"):
-            for action in self.parser._actions:
-                if action.dest in ('help', 'version', 'tui'):
-                    continue
-                
-                label = action.dest
+            added_actions = set()
+            actions_by_dest = {action.dest: action for action in self.parser._actions 
+                              if action.dest not in ('help', 'version', 'tui')}
+            
+            def create_widget(action):
+                friendly_labels = {
+                    "input_dir": "Input Directory",
+                    "output": "Output KMZ Path",
+                    "recursive": "Recursive Search",
+                    "thumbnail_size": "Thumbnail Size (W,H)",
+                    "preset": "Placemark Preset",
+                    "placemark_fields": "Placemark Fields",
+                    "no_photo_path": "Hide Photo Path",
+                    "csv": "Export CSV",
+                    "coordinate_system": "Coordinate System",
+                    "log_file": "Enable Log File",
+                    "verbose": "Verbose Output",
+                }
+                label = friendly_labels.get(action.dest, action.dest)
                 
                 if isinstance(action, argparse._StoreTrueAction):
                     cb = Checkbox(label, id=f"input_{action.dest}", value=action.default)
                     self.inputs[action.dest] = cb
-                    yield cb
+                    return cb
                 elif action.choices:
                     options = [(str(c), str(c)) for c in action.choices]
                     sel = Select(options, prompt=label, id=f"input_{action.dest}")
                     if action.default:
                         sel.value = str(action.default)
                     self.inputs[action.dest] = sel
-                    yield sel
+                    return sel
                 else:
                     default_val = str(action.default) if action.default is not None else ""
-                    # Handle lists like thumbnail_size
-                    if isinstance(action.default, list):
+                    if action.dest == "output":
+                        default_val = ""
+                        label = "Output KMZ Path (Default: <input_dir>/images2kmz/photos.kmz)"
+                    elif isinstance(action.default, list):
                         default_val = ",".join(map(str, action.default))
                     inp = Input(placeholder=label, value=default_val, id=f"input_{action.dest}")
                     self.inputs[action.dest] = inp
-                    yield inp
+                    return inp
+
+            for group_name, dests in self.FLAG_GROUPS.items():
+                group_actions = [actions_by_dest[d] for d in dests if d in actions_by_dest]
+                if group_actions:
+                    with Vertical(classes="group-container"):
+                        yield Label(f"[bold cyan]{group_name}[/bold cyan]", classes="group-label")
+                        for action in group_actions:
+                            yield create_widget(action)
+                            added_actions.add(action.dest)
+            
+            remaining_actions = [a for d, a in actions_by_dest.items() if d not in added_actions]
+            if remaining_actions:
+                with Vertical(classes="group-container"):
+                    yield Label("[bold cyan]Other Options[/bold cyan]", classes="group-label")
+                    for action in remaining_actions:
+                        yield create_widget(action)
+            
             yield Button("Run", id="btn_run", variant="success")
         
         with Vertical(classes="log-container"):
@@ -108,10 +159,10 @@ class Images2KMZApp(App):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "btn_run":
-            self.query_one("#form-container").disabled = True
-            
             # Construct namespace
             args_dict = {}
+            actions_by_dest = {action.dest: action for action in self.parser._actions}
+            
             for dest, widget in self.inputs.items():
                 if isinstance(widget, Checkbox):
                     args_dict[dest] = widget.value
@@ -126,8 +177,19 @@ class Images2KMZApp(App):
                         except:
                             args_dict[dest] = [800, 600]
                     else:
-                        args_dict[dest] = val if val else None
-                        
+                        if not val:
+                            # Fallback to argparse default if empty
+                            action = actions_by_dest.get(dest)
+                            args_dict[dest] = action.default if action else None
+                        else:
+                            args_dict[dest] = val
+
+            if not args_dict.get('input_dir'):
+                self.log_message("[bold red]Error: Input Directory is required.[/bold red]")
+                return
+
+            self.query_one("#form-container").disabled = True
+            
             namespace = argparse.Namespace(**args_dict)
             self.run_processing(namespace)
 
