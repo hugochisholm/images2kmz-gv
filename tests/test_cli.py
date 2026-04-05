@@ -133,7 +133,14 @@ class TestRunFunction:
         self.mock_console_patch = patch('images2kmz.cli.Console')
         self.mock_console_cls = self.mock_console_patch.start()
         self.mock_console = Mock()
+        self.mock_console.__enter__ = Mock(return_value=self.mock_console)
+        self.mock_console.__exit__ = Mock(return_value=None)
         self.mock_console_cls.return_value = self.mock_console
+        
+        self.mock_pb_patch = patch('images2kmz.ui_handler.ProgressBar')
+        self.mock_pb_cls = self.mock_pb_patch.start()
+        self.mock_pb = Mock()
+        self.mock_pb_cls.return_value = self.mock_pb
         
         self.mock_heic_patch = patch('images2kmz.cli.HEICHandler')
         self.mock_heic_cls = self.mock_heic_patch.start()
