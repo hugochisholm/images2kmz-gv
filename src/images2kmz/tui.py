@@ -75,9 +75,6 @@ class Images2KMZApp(App):
         width: 1fr;
         margin-right: 1;
     }
-    #middle-groups .group-container:last-child {
-        margin-right: 0;
-    }
     .group-label {
         margin-bottom: 1;
         text-align: center;
