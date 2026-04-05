@@ -412,24 +412,20 @@ def execute_run(parsed_args: argparse.Namespace, ui: UIHandler) -> int:
         logger.info(f"Found {num_heic} HEIC files")
         
         if num_heic > 0:
-            if parsed_args.convert_heic:
-                # Auto-convert without prompting
-                logger.info(f"Auto-converting {num_heic} HEIC files")
-                ui.print_warning(f"\nFound {num_heic} HEIC file{'s' if num_heic != 1 else ''}")
-                ui.print_info("[dim yellow]Converting HEIC files...[/dim yellow]")
-                batch_convert_heic(
-                    heic_handler.heic_files,
-                    output_dir=input_dir,
-                    move_originals=True
-                )
-            else:
-                # Prompt user
-                logger.info("Prompting user for HEIC conversion")
-                heic_handler.prompt_and_convert()
+            # Auto-convert without prompting
+            logger.info(f"Auto-converting {num_heic} HEIC files")
+            ui.print_warning(f"\nFound {num_heic} HEIC file{'s' if num_heic != 1 else ''}")
+            ui.print_info("[dim yellow]Converting HEIC files...[/dim yellow]")
+            batch_convert_heic(
+                heic_handler.heic_files,
+                output_dir=input_dir,
+                move_originals=True
+            )
         
         # Phase 2: Process images with progress bar
         thumbnail_size = tuple(parsed_args.thumbnail_size)
-        processor = ImageProcessor(thumbnail_size=thumbnail_size)
+        is_tui = getattr(parsed_args, 'tui', False)
+        processor = ImageProcessor(thumbnail_size=thumbnail_size, use_multiprocessing=not is_tui)
         
         from .image_processor import get_image_files
         

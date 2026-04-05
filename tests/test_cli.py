@@ -26,7 +26,6 @@ class TestCreateParser:
         assert args.output == 'photos.kmz'
         assert args.recursive is False
         assert args.thumbnail_size == [800, 600]
-        assert args.convert_heic is False
         assert args.no_photo_path is False
 
     def test_create_parser_full_options(self):
@@ -37,15 +36,13 @@ class TestCreateParser:
             '-o', 'output.kmz',
             '-r',
             '--thumbnail-size', '1024', '768',
-            '--convert-heic',
-            '--no-photo-path'
+                        '--no-photo-path'
         ]
         args = parser.parse_args(cmd_args)
         assert args.input_dir == '/path/to/photos'
         assert args.output == 'output.kmz'
         assert args.recursive is True
         assert args.thumbnail_size == [1024, 768]
-        assert args.convert_heic is True
         assert args.no_photo_path is True
 
 class TestPromptForDirectory:
@@ -281,7 +278,7 @@ class TestRunFunction:
         self.mock_heic.scan.return_value = 5
         self.mock_heic.heic_files = ['file1.heic']
         
-        result = run(['/valid/path', '--convert-heic'])
+        result = run(['/valid/path'])
         
         assert result == 0
         mock_batch_convert.assert_called_once()
