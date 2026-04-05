@@ -7,3 +7,4 @@ pillow-heif>=0.10.0
 rich>=13.0.0
 pyproj
 exifread
+textual>=0.40.0
