@@ -405,3 +405,13 @@ class TestHelpers:
         assert "Skipped: 2" in calls
         assert "Errors: 1" in calls
         assert "Output: out.kmz (10 MB)" in calls
+
+def test_tui_argument_parsing():
+    from images2kmz.cli import create_parser
+    parser = create_parser()
+    args = parser.parse_args(["--tui"])
+    assert args.tui is True
+
+    args2 = parser.parse_args([])
+    assert args2.tui is False
+
