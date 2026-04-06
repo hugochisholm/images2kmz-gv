@@ -173,31 +173,4 @@ class HEICHandler:
         self.heic_files = find_heic_files(self.directory, self.recursive)
         return len(self.heic_files)
     
-    def prompt_and_convert(self) -> list[str]:
-        """
-        Prompt user to convert HEIC files and perform conversion.
-        
-        Returns:
-            List of converted JPG file paths
-        """
-        if not self.heic_files:
-            return []
-        
-        console.print(f"\n[blue]Found {len(self.heic_files)} HEIC files.[/blue]")
-        
-        # Prompt user
-        while True:
-            response = input("Convert HEIC files to JPG? [y/n]: ").lower().strip()
-            if response in ('y', 'yes'):
-                console.print("[blue]Converting HEIC files...[/blue]")
-                converted = batch_convert_heic(
-                    self.heic_files, 
-                    output_dir=self.directory,
-                    move_originals=True
-                )
-                return converted
-            elif response in ('n', 'no'):
-                console.print("[yellow]Skipping HEIC conversion.[/yellow]")
-                return []
-            else:
-                console.print("[yellow]Please enter 'y' or 'n'[/yellow]")
+

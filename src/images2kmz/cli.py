@@ -20,6 +20,7 @@ from .placemark_config import PlacemarkConfig
 from .utils import get_absolute_path
 from .progress import ProgressBar, create_progress_callback
 from .logging_config import setup_logging
+from .ui_handler import UIHandler, RichUIHandler
 
 logger = logging.getLogger(__name__)
 
@@ -66,12 +67,6 @@ def create_parser() -> argparse.ArgumentParser:
          default=[800, 600],
          help='Maximum thumbnail dimensions in pixels (default: 800 600)'
      )
-    
-    parser.add_argument(
-        '--convert-heic',
-        action='store_true',
-        help='Automatically convert HEIC files without prompting'
-    )
     
     parser.add_argument(
         '--version',
@@ -122,6 +117,12 @@ def create_parser() -> argparse.ArgumentParser:
              'minimal (thumbnail only), '
              'client (no photo path, for external sharing), '
              'none (empty info card)'
+    )
+
+    parser.add_argument(
+        '--tui',
+        action='store_true',
+        help='Launch Textual User Interface'
     )
 
     parser.add_argument(
@@ -317,6 +318,7 @@ def print_summary(
     console.print(f"[bold magenta]{separator}[/bold magenta]\n")
 
 
+
 def run(args: list | None = None) -> int:
     """
     Run the CLI application.
@@ -327,25 +329,44 @@ def run(args: list | None = None) -> int:
     Returns:
         Exit code (0 for success, non-zero for error)
     """
-    # Initialize console for colored output
-    console = Console()
-    kmz_gen = None
-    
     try:
         # Parse arguments
         parser = create_parser()
         parsed_args = parser.parse_args(args)
         
+        if parsed_args.tui:
+            from .tui import run_tui
+            return run_tui(parser)
+
+        # Initialize console for colored output
+        console = Console()
+
         # Handle optional input directory - prompt if not provided
         # (Must be done before logging setup to determine default log file location)
         if parsed_args.input_dir is None:
-            input_dir = prompt_for_directory(console)
+            parsed_args.input_dir = prompt_for_directory(console)
         else:
-            input_dir = get_absolute_path(parsed_args.input_dir)
-            if not Path(input_dir).is_dir():
-                console.print(f"\n[bold red]Error: Input directory does not exist: {input_dir}[/bold red]")
+            parsed_args.input_dir = get_absolute_path(parsed_args.input_dir)
+            if not Path(parsed_args.input_dir).is_dir():
+                console.print(f"\n[bold red]Error: Input directory does not exist: {parsed_args.input_dir}[/bold red]")
                 return 1
-        
+                
+        ui = RichUIHandler(console)
+        return execute_run(parsed_args, ui)
+    except KeyboardInterrupt:
+        logger.warning("Operation cancelled by user")
+        Console().print("\n[bold yellow]Operation cancelled by user.[/bold yellow]")
+        return 130
+
+
+def execute_run(parsed_args: argparse.Namespace, ui: UIHandler) -> int:
+    """
+    Execute the core logic of images2kmz with the provided arguments and UI handler.
+    """
+    kmz_gen = None
+    input_dir = parsed_args.input_dir
+
+    try:
         # Setup logging based on command-line arguments
         # Determine output directory first (for CSV mode)
         if parsed_args.output != 'photos.kmz':  # Explicit output provided
@@ -366,39 +387,34 @@ def run(args: list | None = None) -> int:
         setup_logging(verbose=parsed_args.verbose, log_file=log_file_path)
         
         logger.info("=== images2kmz started ===")
-        logger.info(f"Command-line arguments: {args}")
+        logger.info(f"Command-line arguments: {parsed_args}")
         
         # Print header
-        print_header(console)
+        ui.print_header()
         
         logger.info(f"Input directory: {input_dir}")
         logger.info(f"Recursive search: {parsed_args.recursive}")
         logger.info(f"Thumbnail size: {parsed_args.thumbnail_size}")
-        console.print(f"\n[cyan]Input directory: {input_dir}[/cyan]")
-        console.print(f"[cyan]Recursive search: {'Yes' if parsed_args.recursive else 'No'}[/cyan]")
-        console.print(f"[cyan]Thumbnail size: {parsed_args.thumbnail_size[0]}x{parsed_args.thumbnail_size[1]}[/cyan]")
+        ui.print_info(f"\n[cyan]Input directory: {input_dir}[/cyan]")
+        ui.print_info(f"[cyan]Recursive search: {'Yes' if parsed_args.recursive else 'No'}[/cyan]")
+        ui.print_info(f"[cyan]Thumbnail size: {parsed_args.thumbnail_size[0]}x{parsed_args.thumbnail_size[1]}[/cyan]")
         
         # Handle HEIC files
-        console.print("\n[bold cyan]🔍 Scanning for images...[/bold cyan]")
+        ui.print_info("\n[bold cyan]🔍 Scanning for images...[/bold cyan]")
         heic_handler = HEICHandler(input_dir, parsed_args.recursive)
         num_heic = heic_handler.scan()
         logger.info(f"Found {num_heic} HEIC files")
         
         if num_heic > 0:
-            if parsed_args.convert_heic:
-                # Auto-convert without prompting
-                logger.info(f"Auto-converting {num_heic} HEIC files")
-                console.print(f"\n[yellow]Found {num_heic} HEIC file{'s' if num_heic != 1 else ''}[/yellow]")
-                console.print("[dim yellow]Converting HEIC files...[/dim yellow]")
-                batch_convert_heic(
-                    heic_handler.heic_files,
-                    output_dir=input_dir,
-                    move_originals=True
-                )
-            else:
-                # Prompt user
-                logger.info("Prompting user for HEIC conversion")
-                heic_handler.prompt_and_convert()
+            # Auto-convert without prompting
+            logger.info(f"Auto-converting {num_heic} HEIC files")
+            ui.print_warning(f"\nFound {num_heic} HEIC file{'s' if num_heic != 1 else ''}")
+            ui.print_info("[dim yellow]Converting HEIC files...[/dim yellow]")
+            batch_convert_heic(
+                heic_handler.heic_files,
+                output_dir=input_dir,
+                move_originals=True
+            )
         
         # Phase 2: Process images with progress bar
         thumbnail_size = tuple(parsed_args.thumbnail_size)
@@ -409,25 +425,29 @@ def run(args: list | None = None) -> int:
         image_files = get_image_files(input_dir, parsed_args.recursive)
         num_images = len(image_files)
         logger.info(f"Found {num_images} image files to process")
-        console.print(f"[cyan]Found {num_images} JPG file{'s' if num_images != 1 else ''}[/cyan]\n")
+        ui.print_info(f"[cyan]Found {num_images} JPG file{'s' if num_images != 1 else ''}[/cyan]\n")
         
-        console.print("[bold cyan]⚙️  Processing images...[/bold cyan]")
+        ui.print_info("[bold cyan]⚙️  Processing images...[/bold cyan]")
         logger.info("Starting image processing...")
         
         try:
             stats = processor.get_stats()
             
             if num_images > 0:
-                progress_bar = ProgressBar("Processing", console=console)
-                progress_bar.start(num_images)
+                ui.start_progress("Processing", num_images)
+                
+                # Progress callback wrapper
+                def p_callback(current, total, filename=None):
+                    ui.update_progress(current, total, filename)
+                
                 try:
                     processed_images = processor.process_directory(
                         input_dir,
                         parsed_args.recursive,
-                        progress_callback=create_progress_callback(progress_bar),
+                        progress_callback=p_callback,
                     )
                 finally:
-                    progress_bar.finish()
+                    ui.finish_progress()
             else:
                 processed_images = []
             
@@ -435,7 +455,7 @@ def run(args: list | None = None) -> int:
             
         except Exception as e:
             logger.error(f"Error processing images: {e}", exc_info=True)
-            console.print(f"\n[bold red]Error processing images: {e}[/bold red]")
+            ui.print_error(f"\nError processing images: {e}")
             import traceback
             traceback.print_exc()
             return 1
@@ -443,21 +463,21 @@ def run(args: list | None = None) -> int:
         # Show processing results
         logger.info(f"Processing complete - Processed: {stats['processed']}, Skipped: {stats['skipped_no_gps']}, Errors: {stats['errors']}")
         if stats['processed'] > 0:
-            console.print(f"   [green]Processed: {stats['processed']} files[/green]")
+            ui.print_success(f"   Processed: {stats['processed']} files")
         if stats['skipped_no_gps'] > 0:
-            console.print(f"   [yellow]Skipped: {stats['skipped_no_gps']} (no GPS data)[/yellow]")
+            ui.print_warning(f"   Skipped: {stats['skipped_no_gps']} (no GPS data)")
         
         # Completion timestamp
         complete_time = datetime.now().strftime("%I:%M:%S %p")
-        console.print(f"\n[dim cyan]✓ Processing complete at {complete_time}[/dim cyan]")
+        ui.print_info(f"\n[dim cyan]✓ Processing complete at {complete_time}[/dim cyan]")
         
         # Check if we have any images to process
         if not processed_images:
-            print_summary(stats, None, None, None, processor.get_no_gps(), processor.get_no_direction(), console)
+            ui.print_summary(stats, None, None, None, processor.get_no_gps(), processor.get_no_direction())
             return 0
         
         # Phase 3: Generate KMZ with progress bar
-        console.print(f"\n[bold cyan]📦 Generating KMZ file...[/bold cyan]")
+        ui.print_info(f"\n[bold cyan]📦 Generating KMZ file...[/bold cyan]")
         logger.info(f"Starting KMZ generation with {len(processed_images)} images")
         
         # Determine output path
@@ -480,8 +500,7 @@ def run(args: list | None = None) -> int:
                 thumbnail_size=thumbnail_size,
                 placemark_config=placemark_config
             ) as kmz_gen:
-                kmz_progress = ProgressBar("Adding photos", console=console)
-                kmz_progress.start(len(processed_images))
+                ui.start_progress("Adding photos", len(processed_images))
                 try:
                     # Add all processed images
                     for index, img_data in enumerate(processed_images, 1):
@@ -495,9 +514,9 @@ def run(args: list | None = None) -> int:
                         )
                         
                         filename = Path(img_data['path']).name
-                        kmz_progress.update(index, len(processed_images), filename)
+                        ui.update_progress(index, len(processed_images), filename)
                 finally:
-                    kmz_progress.finish()
+                    ui.finish_progress()
                 
                 # Save KMZ file
                 logger.info("Saving KMZ file...")
@@ -512,7 +531,7 @@ def run(args: list | None = None) -> int:
                     # Determine output directory for CSV (always output_dir)
                     csv_path = str(output_dir / "photo_points.csv")
 
-                    console.print(f"\n[bold cyan]📊 Exporting CSV file...[/bold cyan]")
+                    ui.print_info(f"\n[bold cyan]📊 Exporting CSV file...[/bold cyan]")
                     logger.info(f"Starting CSV export to {csv_path}")
 
                     try:
@@ -522,54 +541,52 @@ def run(args: list | None = None) -> int:
                             coordinate_system=parsed_args.coordinate_system,
                         )
 
-                        csv_progress = ProgressBar("Exporting", console=console)
-                        csv_progress.start(len(processed_images))
+                        ui.start_progress("Exporting", len(processed_images))
                         try:
                             csv_output_path = exporter.export(
                                 processed_images=processed_images,
                                 output_path=csv_path,
                             )
                         finally:
-                            csv_progress.finish()
+                            ui.finish_progress()
 
                         if csv_output_path:
                             coord_info = exporter.get_coordinate_info()
                             utm_zone = exporter.get_utm_zone_info()
-                            console.print(f"[green]✓ CSV exported to: {csv_output_path}[/green]")
-                            console.print(f"   [dim]Coordinate system: {coord_info}[/dim]")
+                            ui.print_success(f"✓ CSV exported to: {csv_output_path}")
+                            ui.print_info(f"   [dim]Coordinate system: {coord_info}[/dim]")
                             if utm_zone:
-                                console.print(f"   [dim]UTM zone: {utm_zone}[/dim]")
+                                ui.print_info(f"   [dim]UTM zone: {utm_zone}[/dim]")
                             logger.info(f"CSV export complete: {csv_output_path}")
                         else:
-                            console.print("[yellow]⚠ No data to export to CSV[/yellow]")
+                            ui.print_warning("⚠ No data to export to CSV")
 
                     except Exception as e:
                         logger.error(f"Error exporting CSV: {e}", exc_info=True)
-                        console.print(f"\n[bold red]Error exporting CSV: {e}[/bold red]")
+                        ui.print_error(f"\nError exporting CSV: {e}")
                         # Don't fail the whole operation, just warn
                 
                 # Print summary with colored output (after CSV export)
-                print_summary(stats, kmz_gen, output_path, csv_output_path, processor.get_no_gps(), processor.get_no_direction(), console)
+                ui.print_summary(stats, kmz_gen, output_path, csv_output_path, processor.get_no_gps(), processor.get_no_direction())
 
         except Exception as e:
             logger.error(f"Error generating KMZ file: {e}", exc_info=True)
-            console.print(f"\n[bold red]Error generating KMZ file: {e}[/bold red]")
+            ui.print_error(f"\nError generating KMZ file: {e}")
             import traceback
             traceback.print_exc()
             return 1
         
         logger.info("=== images2kmz completed successfully ===")
         return 0
-    except KeyboardInterrupt:
-        logger.warning("Operation cancelled by user")
-        console.print("\n[bold yellow]Operation cancelled by user.[/bold yellow]")
-        return 130
-
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}", exc_info=True)
+        ui.print_error(f"\nUnexpected error: {e}")
+        return 1
 
 def main():
     """Entry point for command-line execution."""
     sys.exit(run())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

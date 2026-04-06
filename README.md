@@ -71,9 +71,6 @@ images2kmz /path/to/photos -o output.kmz
 # Process recursively
 images2kmz /path/to/photos --recursive -o output.kmz
 
-# Auto-convert HEIC files
-images2kmz /path/to/photos --convert-heic -o output.kmz
-
 # Custom thumbnail size
 images2kmz /path/to/photos --thumbnail-size 1024 768 -o output.kmz
 
@@ -108,7 +105,7 @@ images2kmz --help
 - `-o, --output`: Output KMZ file path (default: `{input_dir}/images2kmz/photos.kmz`)
 - `-r, --recursive`: Recursively search subdirectories
 - `--thumbnail-size WIDTH HEIGHT`: Maximum thumbnail dimensions (default: 800 600)
-- `--convert-heic`: Automatically convert HEIC files without prompting
+- `--tui`: Launch the interactive terminal user interface (TUI) with directory browser
 - `-v, --verbose`: Enable verbose console output with timestamped log file
 - `-l, --log-file`: Enable debug log file (default: `{input_dir}/images2kmz/images2kmz.log`)
 - `--csv`: Export photo coordinates to CSV file (default: `{input_dir}/images2kmz/photo_points.csv`)
@@ -136,11 +133,6 @@ Custom output location:
 ```bash
 images2kmz ~/Photos -o ~/Desktop/vacation.kmz
 # Output: ~/Desktop/vacation.kmz
-```
-
-Auto-convert HEIC files:
-```bash
-images2kmz ~/Photos -r --convert-heic
 ```
 
 Custom thumbnail size:

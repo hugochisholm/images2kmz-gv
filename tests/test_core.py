@@ -469,7 +469,8 @@ class TestKMZGeneratorSave:
                 # Verify directory created
                 mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
 
-    def test_save_temp_file_cleanup(self):
+    @patch('images2kmz.core.Path.mkdir')
+    def test_save_temp_file_cleanup(self, mock_mkdir):
         """
         Test temporary file cleanup after save.
 
@@ -547,8 +548,9 @@ class TestKMZGeneratorSave:
                 # Should call mkdir with exist_ok=True
                 mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
 
+    @patch('images2kmz.core.Path.mkdir')
     @patch('images2kmz.core.Path.unlink')
-    def test_save_cleanup_handles_errors(self, mock_unlink):
+    def test_save_cleanup_handles_errors(self, mock_unlink, mock_mkdir):
         """
         Test cleanup handles errors gracefully.
 

@@ -26,7 +26,6 @@ class TestCreateParser:
         assert args.output == 'photos.kmz'
         assert args.recursive is False
         assert args.thumbnail_size == [800, 600]
-        assert args.convert_heic is False
         assert args.no_photo_path is False
 
     def test_create_parser_full_options(self):
@@ -37,15 +36,13 @@ class TestCreateParser:
             '-o', 'output.kmz',
             '-r',
             '--thumbnail-size', '1024', '768',
-            '--convert-heic',
-            '--no-photo-path'
+                        '--no-photo-path'
         ]
         args = parser.parse_args(cmd_args)
         assert args.input_dir == '/path/to/photos'
         assert args.output == 'output.kmz'
         assert args.recursive is True
         assert args.thumbnail_size == [1024, 768]
-        assert args.convert_heic is True
         assert args.no_photo_path is True
 
 class TestPromptForDirectory:
@@ -133,7 +130,14 @@ class TestRunFunction:
         self.mock_console_patch = patch('images2kmz.cli.Console')
         self.mock_console_cls = self.mock_console_patch.start()
         self.mock_console = Mock()
+        self.mock_console.__enter__ = Mock(return_value=self.mock_console)
+        self.mock_console.__exit__ = Mock(return_value=None)
         self.mock_console_cls.return_value = self.mock_console
+        
+        self.mock_pb_patch = patch('images2kmz.ui_handler.ProgressBar')
+        self.mock_pb_cls = self.mock_pb_patch.start()
+        self.mock_pb = Mock()
+        self.mock_pb_cls.return_value = self.mock_pb
         
         self.mock_heic_patch = patch('images2kmz.cli.HEICHandler')
         self.mock_heic_cls = self.mock_heic_patch.start()
@@ -274,7 +278,7 @@ class TestRunFunction:
         self.mock_heic.scan.return_value = 5
         self.mock_heic.heic_files = ['file1.heic']
         
-        result = run(['/valid/path', '--convert-heic'])
+        result = run(['/valid/path'])
         
         assert result == 0
         mock_batch_convert.assert_called_once()
@@ -398,3 +402,13 @@ class TestHelpers:
         assert "Skipped: 2" in calls
         assert "Errors: 1" in calls
         assert "Output: out.kmz (10 MB)" in calls
+
+def test_tui_argument_parsing():
+    from images2kmz.cli import create_parser
+    parser = create_parser()
+    args = parser.parse_args(["--tui"])
+    assert args.tui is True
+
+    args2 = parser.parse_args([])
+    assert args2.tui is False
+
