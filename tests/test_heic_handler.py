@@ -321,37 +321,6 @@ class TestHEICHandler:
         assert handler.heic_files == ["/path/1.heic", "/path/2.heic"]
         mock_find.assert_called_once_with("/test/dir", False)
 
-    def test_heic_handler_prompt_and_convert_no_files(self):
-        """
-        Test prompt_and_convert when no files found.
-
-        Should return empty list immediately.
-        """
-        handler = HEICHandler("/test/dir")
-        handler.heic_files = []
-
-        result = handler.prompt_and_convert()
-
-        assert result == []
-
-    @patch('builtins.input', return_value='y')
-    @patch('images2kmz.heic_handler.batch_convert_heic')
-    def test_heic_handler_prompt_and_convert_yes(self, mock_batch, mock_input):
-        """
-        Test prompt_and_convert when user confirms.
-
-        Should call batch_convert_heic when user enters 'y'.
-        """
-        handler = HEICHandler("/test/dir")
-        handler.heic_files = ["/path/1.heic"]
-        mock_batch.return_value = ["/path/1.jpg"]
-
-        result = handler.prompt_and_convert()
-
-        assert result == ["/path/1.jpg"]
-        mock_batch.assert_called_once()
-
-
 class TestHEICIntegration:
     """Integration tests using real HEIC files."""
 

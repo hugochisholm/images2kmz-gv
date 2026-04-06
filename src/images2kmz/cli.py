@@ -69,12 +69,6 @@ def create_parser() -> argparse.ArgumentParser:
      )
     
     parser.add_argument(
-        '--convert-heic',
-        action='store_true',
-        help='Automatically convert HEIC files without prompting'
-    )
-    
-    parser.add_argument(
         '--version',
         action='version',
         version='%(prog)s 0.3.0'

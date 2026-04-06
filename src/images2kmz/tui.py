@@ -1,10 +1,12 @@
 import argparse
+import typing
 from typing import Dict, Any, Optional, List
 from pathlib import Path
 
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Input, Checkbox, Select, Button, RichLog, ProgressBar as TextualProgressBar, Label
-from textual.containers import VerticalScroll, Vertical
+from textual.screen import ModalScreen
+from textual.widgets import Header, Footer, Input, Checkbox, Select, Button, RichLog, ProgressBar as TextualProgressBar, Label, DirectoryTree
+from textual.containers import VerticalScroll, Vertical, Horizontal
 from textual import work
 
 from .ui_handler import UIHandler
@@ -49,7 +51,7 @@ class TextualUIHandler(UIHandler):
         no_gps: Optional[List[str]] = None,
         no_direction: Optional[List[str]] = None,
     ) -> None:
-        self.app.call_from_thread(self.app.log_message, f"\\nSummary: Processed {processor_stats['processed']} files.")
+        self.app.call_from_thread(self.app.log_message, f"\nSummary: Processed {processor_stats['processed']} files.")
         if processor_stats['skipped_no_gps'] > 0:
             self.app.call_from_thread(self.app.log_message, f"[yellow]Skipped {processor_stats['skipped_no_gps']} files (no GPS data)[/yellow]")
         if output_path:
@@ -58,7 +60,83 @@ class TextualUIHandler(UIHandler):
             self.app.call_from_thread(self.app.log_message, f"[green]CSV saved to: {csv_path}[/green]")
 
 
+class FilteredDirectoryTree(DirectoryTree):
+    def filter_paths(self, paths: typing.Iterable[Path]) -> typing.Iterable[Path]:
+        return [path for path in paths if not path.name.startswith(".")]
+
+class DirectoryPickerScreen(ModalScreen[str]):
+    CSS = """
+    DirectoryPickerScreen {
+        align: center middle;
+        background: $background 80%;
+    }
+    #dialog {
+        width: 80%;
+        height: 80%;
+        border: thick $background;
+        background: $surface;
+        padding: 1;
+    }
+    #tree-container {
+        height: 1fr;
+        border: solid $primary;
+        margin-bottom: 1;
+    }
+    #current-path {
+        width: 100%;
+        text-align: center;
+        margin-bottom: 1;
+        color: $text-muted;
+    }
+    #buttons {
+        height: auto;
+        align: center middle;
+    }
+    #buttons Button {
+        margin: 0 1;
+    }
+    """
+
+    def __init__(self, start_path: str = ""):
+        super().__init__()
+        if start_path and start_path != ".":
+            try:
+                self.start_path = str(Path(start_path).expanduser().resolve())
+            except Exception:
+                self.start_path = str(Path.home())
+        else:
+            self.start_path = str(Path.home())
+        self.selected_path: str = self.start_path
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="dialog"):
+            yield Label("Select a Directory", classes="group-label")
+            with Vertical(id="tree-container"):
+                tree = FilteredDirectoryTree(self.start_path, id="dir-tree")
+                tree.guide_depth = 3
+                yield tree
+            yield Label(self.start_path, id="current-path")
+            with Horizontal(id="buttons"):
+                yield Button("Cancel", variant="error", id="btn_cancel")
+                yield Button("Select", variant="success", id="btn_select")
+
+    def on_tree_node_highlighted(self, event) -> None:
+        if event.node.data:
+            path = getattr(event.node.data, "path", None)
+            if path:
+                self.selected_path = str(path.parent if path.is_file() else path)
+                self.query_one("#current-path", Label).update(self.selected_path)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn_cancel":
+            self.dismiss(None)
+        elif event.button.id == "btn_select":
+            self.dismiss(self.selected_path)
+
+
 class Images2KMZApp(App):
+    TITLE = "Images2KMZ - TUI"
+    
     CSS = """
     .form-container { padding: 1; height: auto; }
     #middle-groups {
@@ -80,8 +158,27 @@ class Images2KMZApp(App):
         text-align: center;
         width: 100%;
     }
+    .input-row {
+        height: auto;
+        layout: horizontal;
+    }
+    .input-row Input {
+        width: 1fr;
+    }
+    .input-row Button {
+        width: 15;
+        margin-left: 1;
+    }
     .log-container { height: 1fr; border: solid green; }
-    #btn_run { margin-top: 1; width: 100%; }
+    #bottom-buttons {
+        height: auto;
+        layout: horizontal;
+        margin-top: 1;
+    }
+    #bottom-buttons Button {
+        width: 1fr;
+        margin-right: 1;
+    }
     """
 
     FLAG_GROUPS = {
@@ -97,8 +194,6 @@ class Images2KMZApp(App):
         self.inputs = {}
 
     def compose(self) -> ComposeResult:
-        from textual.containers import Vertical, Horizontal
-        
         yield Header()
         with VerticalScroll(classes="form-container", id="form-container"):
             added_actions = set()
@@ -109,7 +204,7 @@ class Images2KMZApp(App):
                 friendly_labels = {
                     "input_dir": "Input Directory",
                     "output": "Output Directory",
-                    "recursive": "Recursive Search",
+                    "recursive": "Include Subdirectories",
                     "thumbnail_size": "Thumbnail Size (W,H)",
                     "preset": "Placemark Preset",
                     "placemark_fields": "Placemark Fields",
@@ -136,7 +231,7 @@ class Images2KMZApp(App):
                     default_val = str(action.default) if action.default is not None else ""
                     if action.dest == "output":
                         default_val = ""
-                        label = "Output Directory (Default: <input_dir>/images2kmz/photos.kmz)"
+                        label = "Output Directory (Default: <input_dir>/images2kmz/)"
                     elif isinstance(action.default, list):
                         default_val = ",".join(map(str, action.default))
                     inp = Input(placeholder=label, value=default_val, id=f"input_{action.dest}")
@@ -151,7 +246,13 @@ class Images2KMZApp(App):
                     yield Label(f"[bold cyan]{group_name}[/bold cyan]", classes="group-label")
                     for d in dests:
                         if d in actions_by_dest:
-                            yield create_widget(actions_by_dest[d])
+                            widget = create_widget(actions_by_dest[d])
+                            if d in ("input_dir", "output"):
+                                with Horizontal(classes="input-row"):
+                                    yield widget
+                                    yield Button("Browse", id=f"browse_{d}", variant="primary")
+                            else:
+                                yield widget
                             added_actions.add(d)
 
             # 2. Middle Groups (Horizontal)
@@ -175,7 +276,9 @@ class Images2KMZApp(App):
                     for action in remaining_actions:
                         yield create_widget(action)
             
-            yield Button("Run", id="btn_run", variant="success")
+            with Horizontal(id="bottom-buttons"):
+                yield Button("Run", id="btn_run", variant="success")
+                yield Button("Exit", id="btn_exit", variant="error")
         
         with Vertical(classes="log-container"):
             yield TextualProgressBar(id="progress_bar", show_eta=False)
@@ -200,7 +303,7 @@ class Images2KMZApp(App):
                     if dest == 'thumbnail_size': # Special case for nargs=2 integer list
                         try:
                             args_dict[dest] = [int(x.strip()) for x in val.split(",")]
-                        except:
+                        except Exception:
                             args_dict[dest] = [800, 600]
                     else:
                         if not val:
@@ -218,6 +321,20 @@ class Images2KMZApp(App):
             
             namespace = argparse.Namespace(**args_dict)
             self.run_processing(namespace)
+
+        elif event.button.id == "btn_exit":
+            self.exit()
+
+        elif event.button.id in ("browse_input_dir", "browse_output"):
+            dest = event.button.id.replace("browse_", "")
+            input_widget = self.inputs.get(dest)
+            start_path = input_widget.value if input_widget and input_widget.value else ""
+            
+            def set_path(path: str | None) -> None:
+                if path is not None and input_widget:
+                    input_widget.value = path
+                    
+            self.push_screen(DirectoryPickerScreen(start_path=start_path), set_path)
 
     @work(thread=True)
     def run_processing(self, parsed_args: argparse.Namespace) -> None:
