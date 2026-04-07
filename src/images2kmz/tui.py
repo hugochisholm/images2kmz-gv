@@ -308,6 +308,11 @@ class Images2KMZApp(App):
                             args_dict[dest] = [int(x.strip()) for x in val.split(",")]
                         except Exception:
                             args_dict[dest] = [800, 600]
+                    elif dest == 'max_images_per_file':
+                        try:
+                            args_dict[dest] = int(val)
+                        except ValueError:
+                            args_dict[dest] = 100
                     else:
                         if not val:
                             # Fallback to argparse default if empty
