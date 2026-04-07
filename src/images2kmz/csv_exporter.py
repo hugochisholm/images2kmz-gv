@@ -172,8 +172,14 @@ class CSVExporter:
                 photo_date = img_data.get('capture_date') or base_date
                 point_number = self.generate_point_number(photo_date, sequence)
 
-                # Get description (use filename if no custom description), prefix with PHOTO
-                description = f"PHOTO {img_data.get('custom_name', img_data['filename'])}"
+                # Get description: "PHOTO($azimuth) $photo_description"
+                photo_desc = img_data.get('description_text') or img_data.get('custom_name', img_data['filename'])
+                bearing_data = img_data.get('bearing')
+                if bearing_data and 'azimuth' in bearing_data:
+                    azimuth = bearing_data['azimuth']
+                    description = f"PHOTO({azimuth}) {photo_desc}"
+                else:
+                    description = f"PHOTO {photo_desc}"
 
                 # Write row
                 writer.writerow([

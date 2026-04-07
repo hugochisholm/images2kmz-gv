@@ -190,3 +190,26 @@ class TestUTMZone:
         exporter = CSVExporter()
         zone = exporter._get_utm_zone(0.0)
         assert zone == "EPSG:32631"  # UTM zone 31N
+
+    def test_export_with_bearing(self):
+        """Test exporting with bearing information."""
+        exporter = CSVExporter()
+        processed_images = [
+            {
+                "path": "/path/photo1.jpg",
+                "filename": "photo1.jpg",
+                "gps": GPSData(latitude=37.7749, longitude=-122.4194),
+                "bearing": {"azimuth": 145},
+                "description_text": "Sample Description",
+            }
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = Path(tmpdir) / "test.csv"
+            exporter.export(processed_images, str(output_path), base_date=datetime(2020, 1, 1))
+
+            with open(output_path, "r") as f:
+                reader = csv.reader(f)
+                rows = list(reader)
+
+            assert rows[0][4] == "PHOTO(145) Sample Description"
