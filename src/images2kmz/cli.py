@@ -502,79 +502,103 @@ def execute_run(parsed_args: argparse.Namespace, ui: UIHandler) -> int:
         placemark_config = resolve_placemark_config(parsed_args)
         
         try:
-            with KMZGenerator(
-                output_path, 
-                thumbnail_size=thumbnail_size,
-                placemark_config=placemark_config
-            ) as kmz_gen:
-                ui.start_progress("Adding photos", len(processed_images))
-                try:
-                    # Add all processed images
-                    for index, img_data in enumerate(processed_images, 1):
-                        kmz_gen.add_photo(
-                            photo_path=img_data['path'],
-                            gps_data=img_data['gps'],
-                            thumbnail_bytes=img_data['thumbnail'],
-                            name=img_data.get('custom_name', img_data['filename']),
-                            description_text=img_data.get('description_text'),
-                            bearing=img_data.get('bearing'),
-                        )
+            max_images = parsed_args.max_images_per_file
+            if max_images <= 0:
+                chunks = [processed_images]
+            else:
+                chunks = [processed_images[i:i + max_images] for i in range(0, len(processed_images), max_images)]
+            
+            saved_paths = []
+            kmz_generators = []
+            
+            ui.start_progress("Adding photos", len(processed_images))
+            try:
+                global_index = 0
+                for chunk_index, chunk in enumerate(chunks):
+                    # Determine current output path
+                    if len(chunks) == 1:
+                        current_output_path = get_absolute_path(output_path)
+                    else:
+                        base_path = Path(output_path)
+                        current_output_path = get_absolute_path(base_path.with_name(f"{base_path.stem}_{chunk_index + 1}{base_path.suffix}"))
                         
-                        filename = Path(img_data['path']).name
-                        ui.update_progress(index, len(processed_images), filename)
-                finally:
-                    ui.finish_progress()
-                
-                # Save KMZ file
-                logger.info("Saving KMZ file...")
-                output_path = kmz_gen.save()
-                logger.info(f"KMZ file saved: {output_path}")
-                
-                # Print summary with colored output
-                csv_output_path = None
-                
-                # Phase 4: Export CSV if requested
-                if parsed_args.csv and processed_images:
-                    # Determine output directory for CSV (always output_dir)
-                    csv_path = str(output_dir / "photo_points.csv")
-
-                    ui.print_info(f"\n[bold cyan]📊 Exporting CSV file...[/bold cyan]")
-                    logger.info(f"Starting CSV export to {csv_path}")
-
+                    kmz_gen = KMZGenerator(
+                        current_output_path, 
+                        thumbnail_size=thumbnail_size,
+                        placemark_config=placemark_config
+                    )
+                    kmz_gen.__enter__()
+                    kmz_generators.append(kmz_gen)
+                    
                     try:
-                        from .csv_exporter import CSVExporter
-
-                        exporter = CSVExporter(
-                            coordinate_system=parsed_args.coordinate_system,
-                        )
-
-                        ui.start_progress("Exporting", len(processed_images))
-                        try:
-                            csv_output_path = exporter.export(
-                                processed_images=processed_images,
-                                output_path=csv_path,
+                        for img_data in chunk:
+                            global_index += 1
+                            kmz_gen.add_photo(
+                                photo_path=img_data['path'],
+                                gps_data=img_data['gps'],
+                                thumbnail_bytes=img_data['thumbnail'],
+                                name=img_data.get('custom_name', img_data['filename']),
+                                description_text=img_data.get('description_text'),
+                                bearing=img_data.get('bearing'),
                             )
-                        finally:
-                            ui.finish_progress()
-
-                        if csv_output_path:
-                            coord_info = exporter.get_coordinate_info()
-                            utm_zone = exporter.get_utm_zone_info()
-                            ui.print_success(f"✓ CSV exported to: {csv_output_path}")
-                            ui.print_info(f"   [dim]Coordinate system: {coord_info}[/dim]")
-                            if utm_zone:
-                                ui.print_info(f"   [dim]UTM zone: {utm_zone}[/dim]")
-                            logger.info(f"CSV export complete: {csv_output_path}")
-                        else:
-                            ui.print_warning("⚠ No data to export to CSV")
-
-                    except Exception as e:
-                        logger.error(f"Error exporting CSV: {e}", exc_info=True)
-                        ui.print_error(f"\nError exporting CSV: {e}")
-                        # Don't fail the whole operation, just warn
+                            
+                            filename = Path(img_data['path']).name
+                            ui.update_progress(global_index, len(processed_images), filename)
+                            
+                        logger.info(f"Saving KMZ file: {current_output_path}...")
+                        saved_path = kmz_gen.save()
+                        saved_paths.append(saved_path)
+                        logger.info(f"KMZ file saved: {saved_path}")
+                    finally:
+                        kmz_gen.__exit__(None, None, None)
+            finally:
+                ui.finish_progress()
                 
-                # Print summary with colored output (after CSV export)
-                ui.print_summary(stats, kmz_gen, output_path, csv_output_path, processor.get_no_gps(), processor.get_no_direction())
+            # Print summary with colored output
+            csv_output_path = None
+            
+            # Phase 4: Export CSV if requested
+            if parsed_args.csv and processed_images:
+                # Determine output directory for CSV (always output_dir)
+                csv_path = str(output_dir / "photo_points.csv")
+
+                ui.print_info(f"\n[bold cyan]📊 Exporting CSV file...[/bold cyan]")
+                logger.info(f"Starting CSV export to {csv_path}")
+
+                try:
+                    from .csv_exporter import CSVExporter
+
+                    exporter = CSVExporter(
+                        coordinate_system=parsed_args.coordinate_system,
+                    )
+
+                    ui.start_progress("Exporting", len(processed_images))
+                    try:
+                        csv_output_path = exporter.export(
+                            processed_images=processed_images,
+                            output_path=csv_path,
+                        )
+                    finally:
+                        ui.finish_progress()
+
+                    if csv_output_path:
+                        coord_info = exporter.get_coordinate_info()
+                        utm_zone = exporter.get_utm_zone_info()
+                        ui.print_success(f"✓ CSV exported to: {csv_output_path}")
+                        ui.print_info(f"   [dim]Coordinate system: {coord_info}[/dim]")
+                        if utm_zone:
+                            ui.print_info(f"   [dim]UTM zone: {utm_zone}[/dim]")
+                        logger.info(f"CSV export complete: {csv_output_path}")
+                    else:
+                        ui.print_warning("⚠ No data to export to CSV")
+
+                except Exception as e:
+                    logger.error(f"Error exporting CSV: {e}", exc_info=True)
+                    ui.print_error(f"\nError exporting CSV: {e}")
+                    # Don't fail the whole operation, just warn
+            
+            # Print summary with colored output (after CSV export)
+            ui.print_summary(stats, kmz_generators, saved_paths, csv_output_path, processor.get_no_gps(), processor.get_no_direction())
 
         except Exception as e:
             logger.error(f"Error generating KMZ file: {e}", exc_info=True)

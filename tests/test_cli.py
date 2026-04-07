@@ -161,7 +161,8 @@ class TestRunFunction:
         self.mock_kmz_cls = self.mock_kmz_patch.start()
         self.mock_kmz = Mock()
         # Setup mock as context manager
-        self.mock_kmz_cls.return_value.__enter__ = Mock(return_value=self.mock_kmz)
+        self.mock_kmz_cls.return_value = self.mock_kmz
+        self.mock_kmz.__enter__ = Mock(return_value=self.mock_kmz)
         self.mock_kmz_cls.return_value.__exit__ = Mock(return_value=None)
         
         # Patch where it is defined, because it is imported locally in run()
