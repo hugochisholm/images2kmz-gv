@@ -72,7 +72,7 @@ images2kmz /path/to/photos -o output.kmz
 images2kmz /path/to/photos --recursive -o output.kmz
 
 # Custom thumbnail size
-images2kmz /path/to/photos --thumbnail-size 1024 768 -o output.kmz
+images2kmz /path/to/photos --thumbnail-size medium -o output.kmz
 
 # Verbose output (shows processing progress)
 images2kmz /path/to/photos -v
@@ -107,7 +107,7 @@ images2kmz --help
 - `input_dir`: Directory containing photos (optional; will prompt if not provided)
 - `-o, --output`: Output KMZ file path (default: `{input_dir}/images2kmz/photos.kmz`)
 - `-r, --recursive`: Recursively search subdirectories
-- `--thumbnail-size WIDTH HEIGHT`: Maximum thumbnail dimensions (default: 800 600)
+- `--thumbnail-size PRESET`: Thumbnail size preset ('small', 'medium', or 'large', default: medium)
 - `--max-images N`: Maximum number of images per KMZ output file (default: 100, 0 for unlimited)
 - `--tui`: Launch the interactive terminal user interface (TUI) with directory browser
 - `-v, --verbose`: Enable verbose console output with timestamped log file
@@ -140,7 +140,7 @@ images2kmz ~/Photos -o ~/Desktop/vacation.kmz
 
 Custom thumbnail size:
 ```bash
-images2kmz ~/Photos --thumbnail-size 400 300
+images2kmz ~/Photos --thumbnail-size small
 ```
 
 #### CSV Export Format
@@ -174,7 +174,7 @@ You can also import and use images2kmz in your own Python scripts:
 from images2kmz import ImageProcessor, KMZGenerator, PlacemarkConfig
 
 # Process images (parallel processing with up to 8 workers by default)
-processor = ImageProcessor(thumbnail_size=(800, 600), max_workers=4)
+processor = ImageProcessor(thumbnail_size='medium', max_workers=4)
 images = processor.process_directory('/path/to/photos', recursive=True)
 
 # Get statistics
@@ -187,7 +187,7 @@ config = PlacemarkConfig.from_preset('client')  # No photo path for external sha
 # Or: config = PlacemarkConfig(show_direction=False, show_location=True)
 
 # Generate KMZ (using context manager for automatic cleanup)
-with KMZGenerator('output.kmz', thumbnail_size=(800, 600), placemark_config=config) as kmz:
+with KMZGenerator('output.kmz', thumbnail_size='medium', placemark_config=config) as kmz:
     for img in images:
         kmz.add_photo(
             photo_path=img['path'],
