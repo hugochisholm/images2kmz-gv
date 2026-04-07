@@ -70,3 +70,4 @@ sample-images2/
 # Log files
 log.txt
 custom.log
+.worktrees/
