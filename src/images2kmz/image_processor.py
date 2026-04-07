@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass
+from datetime import datetime
 from io import BytesIO
 from pathlib import Path
 from collections.abc import Callable
@@ -98,6 +99,33 @@ def create_thumbnail(image_path: str, max_size: tuple[int, int] = (800, 600)) ->
     except Exception as e:
         logger.error(f"Failed to create thumbnail for {image_path}: {e}")
         raise
+
+
+def extract_capture_date(image_path: str) -> datetime | None:
+    """Extract capture date from image EXIF, fallback to file mod time."""
+    try:
+        import exifread
+        with open(image_path, "rb") as f:
+            tags = exifread.process_file(f, details=False)
+            
+        date_tags = ["EXIF DateTimeOriginal", "Image DateTime", "EXIF DateTimeDigitized"]
+        for tag in date_tags:
+            if tag in tags:
+                date_str = str(tags[tag])
+                try:
+                    from datetime import datetime
+                    return datetime.strptime(date_str, "%Y:%m:%d %H:%M:%S")
+                except ValueError:
+                    pass
+    except Exception as e:
+        logger.debug(f"Failed to read EXIF date from {image_path}: {e}")
+        
+    try:
+        from datetime import datetime
+        timestamp = os.path.getmtime(image_path)
+        return datetime.fromtimestamp(timestamp)
+    except Exception:
+        return None
 
 
 def extract_custom_pin_name(image_path: str, fallback_name: str) -> tuple[str, str | None]:
@@ -321,6 +349,9 @@ def _process_single_image(args: tuple[str, tuple[int, int]]) -> dict | None:
 
         # Extract compass bearing from EXIF
         bearing = get_compass_bearing(image_path)
+        
+        # Extract capture date
+        capture_date = extract_capture_date(image_path)
 
         return {
             'path': image_path,
@@ -329,7 +360,8 @@ def _process_single_image(args: tuple[str, tuple[int, int]]) -> dict | None:
             'thumbnail': thumbnail_bytes,
             'custom_name': custom_name,
             'description_text': description_text,
-            'bearing': bearing
+            'bearing': bearing,
+            'capture_date': capture_date
         }
 
     except Exception as e:

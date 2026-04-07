@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch, MagicMock, mock_open
 import pytest
 from PIL import Image
 
@@ -593,3 +593,25 @@ class TestGetCompassBearing:
         
         result = get_compass_bearing('/nonexistent/image.jpg')
         assert result is None
+
+@patch("exifread.process_file")
+@patch("builtins.open", new_callable=mock_open)
+def test_extract_capture_date_exif_original(mock_file, mock_process_file):
+    """Test extracting capture date from EXIF."""
+    mock_process_file.return_value = {"EXIF DateTimeOriginal": "2024:10:29 18:44:12"}
+    from images2kmz.image_processor import extract_capture_date
+    from datetime import datetime
+    dt = extract_capture_date("dummy.jpg")
+    assert dt == datetime(2024, 10, 29, 18, 44, 12)
+
+@patch("os.path.getmtime")
+@patch("exifread.process_file")
+@patch("builtins.open", new_callable=mock_open)
+def test_extract_capture_date_fallback(mock_file, mock_process_file, mock_getmtime):
+    """Test extracting capture date fallback to file modification time."""
+    mock_process_file.return_value = {}
+    mock_getmtime.return_value = 1730227452.0
+    from images2kmz.image_processor import extract_capture_date
+    from datetime import datetime
+    dt = extract_capture_date("dummy.jpg")
+    assert dt == datetime.fromtimestamp(1730227452.0)

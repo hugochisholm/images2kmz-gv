@@ -101,6 +101,36 @@ class TestCSVExporter:
             # Elevation should be 10.0 (not empty)
             assert rows[0][3] == '10.0000'
 
+    def test_export_capture_date(self):
+        """Test export with capture date."""
+        exporter = CSVExporter()
+        processed_images = [
+            {
+                "path": "/path/photo1.jpg",
+                "filename": "photo1.jpg",
+                "gps": GPSData(latitude=37.7749, longitude=-122.4194),
+                "capture_date": datetime(2025, 10, 29)
+            },
+            {
+                "path": "/path/photo2.jpg",
+                "filename": "photo2.jpg",
+                "gps": GPSData(latitude=37.7749, longitude=-122.4194),
+                "capture_date": datetime(2025, 10, 30)
+            }
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = Path(tmpdir) / "test.csv"
+            exporter.export(processed_images, str(output_path), base_date=datetime(2020, 1, 1))
+
+            with open(output_path, "r") as f:
+                reader = csv.reader(f)
+                rows = list(reader)
+
+            assert rows[0][0] == "2510299001"
+            assert rows[1][0] == "2510309002"
+
+
     def test_export_multiple_photos_sequential(self):
         """Test sequential point numbering."""
         exporter = CSVExporter(starting_point_number=9001)

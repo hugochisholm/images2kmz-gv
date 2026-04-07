@@ -169,7 +169,8 @@ class CSVExporter:
                 elevation = gps.altitude if gps.altitude is not None else 0.0
 
                 # Generate point number
-                point_number = self.generate_point_number(base_date, sequence)
+                photo_date = img_data.get('capture_date') or base_date
+                point_number = self.generate_point_number(photo_date, sequence)
 
                 # Get description (use filename if no custom description), prefix with PHOTO
                 description = f"PHOTO {img_data.get('custom_name', img_data['filename'])}"
