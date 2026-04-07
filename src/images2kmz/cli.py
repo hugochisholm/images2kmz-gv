@@ -126,7 +126,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
-        '--max-images-per-file',
+        '--max-images',
         type=int,
         default=100,
         help='Maximum number of images per KMZ file (default: 100, 0 for unlimited)'
@@ -502,7 +502,7 @@ def execute_run(parsed_args: argparse.Namespace, ui: UIHandler) -> int:
         placemark_config = resolve_placemark_config(parsed_args)
         
         try:
-            max_images = parsed_args.max_images_per_file
+            max_images = parsed_args.max_images
             if max_images <= 0:
                 chunks = [processed_images]
             else:

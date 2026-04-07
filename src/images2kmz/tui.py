@@ -185,7 +185,7 @@ class Images2KMZApp(App):
 
     FLAG_GROUPS = {
         "Paths & Files": ["input_dir", "output"],
-        "Processing": ["recursive", "thumbnail_size"],
+        "Processing": ["recursive", "thumbnail_size", "max_images"],
         "Placemark Content": ["preset", "placemark_fields", "no_photo_path"],
         "Export & Logs": ["csv", "coordinate_system", "log_file", "verbose"],
     }
@@ -214,7 +214,7 @@ class Images2KMZApp(App):
                     "csv": "Export CSV",
                     "coordinate_system": "Coordinate System",
                     "log_file": "Enable Log File",
-                    "max_images_per_file": "Max Images Per File",
+                    "max_images": "Max Images Per File",
                     "verbose": "Verbose Output",
                 }
                 label = friendly_labels.get(action.dest, action.dest)
@@ -308,7 +308,7 @@ class Images2KMZApp(App):
                             args_dict[dest] = [int(x.strip()) for x in val.split(",")]
                         except Exception:
                             args_dict[dest] = [800, 600]
-                    elif dest == 'max_images_per_file':
+                    elif dest == 'max_images':
                         try:
                             args_dict[dest] = int(val)
                         except ValueError:

@@ -95,6 +95,9 @@ images2kmz /path/to/photos --preset=client
 # Hide photo path link (for external sharing - backward compatible)
 images2kmz /path/to/photos --no-photo-path
 
+# Limit the number of images per KMZ output file
+images2kmz /path/to/photos --max-images=50
+
 # Show help
 images2kmz --help
 ```
@@ -105,6 +108,7 @@ images2kmz --help
 - `-o, --output`: Output KMZ file path (default: `{input_dir}/images2kmz/photos.kmz`)
 - `-r, --recursive`: Recursively search subdirectories
 - `--thumbnail-size WIDTH HEIGHT`: Maximum thumbnail dimensions (default: 800 600)
+- `--max-images N`: Maximum number of images per KMZ output file (default: 100, 0 for unlimited)
 - `--tui`: Launch the interactive terminal user interface (TUI) with directory browser
 - `-v, --verbose`: Enable verbose console output with timestamped log file
 - `-l, --log-file`: Enable debug log file (default: `{input_dir}/images2kmz/images2kmz.log`)
