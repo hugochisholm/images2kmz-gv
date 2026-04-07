@@ -19,6 +19,12 @@ logger = logging.getLogger(__name__)
 # Supported image formats
 SUPPORTED_FORMATS = ('.jpg', '.jpeg')
 
+THUMBNAIL_PRESETS = {
+    'small': (800, 800),
+    'medium': (1200, 1200),
+    'large': (1800, 1800)
+}
+
 
 @dataclass
 class GPSData:
@@ -320,16 +326,16 @@ def is_supported_format(file_path: str) -> bool:
     return file_path.lower().endswith(SUPPORTED_FORMATS)
 
 
-def _process_single_image(args: tuple[str, tuple[int, int]]) -> dict | None:
+def _process_single_image(args: tuple[str, str]) -> dict | None:
     """Process a single image - helper function for parallel processing.
 
     Args:
-        args: Tuple of (image_path, thumbnail_size)
+        args: Tuple of (image_path, thumbnail_size_preset)
 
     Returns:
         Dict with processed image info or None if processing failed
     """
-    image_path, thumbnail_size = args
+    image_path, thumbnail_size_preset = args
 
     try:
         # Extract GPS data
@@ -339,7 +345,8 @@ def _process_single_image(args: tuple[str, tuple[int, int]]) -> dict | None:
             return {'skipped': True, 'path': image_path, 'reason': 'no_gps'}
 
         # Create thumbnail
-        thumbnail_bytes = create_thumbnail(image_path, thumbnail_size)
+        thumbnail_dimensions = THUMBNAIL_PRESETS[thumbnail_size_preset]
+        thumbnail_bytes = create_thumbnail(image_path, thumbnail_dimensions)
 
         # Get filename
         filename = Path(image_path).name
@@ -402,13 +409,15 @@ def get_image_files(directory: str, recursive: bool = False) -> list[str]:
 class ImageProcessor:
     """High-level image processing coordinator."""
 
-    def __init__(self, thumbnail_size: tuple[int, int] = (800, 600)):
+    def __init__(self, thumbnail_size: str = 'medium'):
         """
         Initialize image processor.
 
         Args:
-            thumbnail_size: Maximum dimensions for thumbnails
+            thumbnail_size: Preset size for thumbnails ('small', 'medium', 'large')
         """
+        if thumbnail_size not in THUMBNAIL_PRESETS:
+            raise KeyError(f"Invalid thumbnail size preset: {thumbnail_size}. Must be one of: {list(THUMBNAIL_PRESETS.keys())}")
         self.thumbnail_size = thumbnail_size
         self.stats = {
             'total_found': 0,

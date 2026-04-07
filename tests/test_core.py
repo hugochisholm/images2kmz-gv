@@ -17,13 +17,13 @@ class TestKMZGeneratorInit:
         """
         Test initialization with default parameters.
 
-        Should use default thumbnail_size (800, 600) and None callback.
+        Should use default thumbnail_size 'medium' and None callback.
         Temp directory is None until context manager is entered.
         """
         generator = KMZGenerator('/test/output.kmz')
 
         assert generator.output_path == '/test/output.kmz'
-        assert generator.thumbnail_size == (800, 600)
+        assert generator.thumbnail_size == 'medium'
         assert generator.progress_callback is None
         assert generator.placemark_config.show_photo_path is True
         assert generator.stats == {'photos_added': 0, 'total_size': 0}
@@ -39,13 +39,13 @@ class TestKMZGeneratorInit:
         from images2kmz.placemark_config import PlacemarkConfig
         generator = KMZGenerator(
             '/test/output.kmz',
-            thumbnail_size=(400, 300),
+            thumbnail_size='small',
             progress_callback=callback,
             placemark_config=PlacemarkConfig(show_photo_path=False)
         )
         
         assert generator.output_path == '/test/output.kmz'
-        assert generator.thumbnail_size == (400, 300)
+        assert generator.thumbnail_size == 'small'
         assert generator.progress_callback is callback
         assert generator.placemark_config.show_photo_path is False
 
@@ -689,7 +689,7 @@ class TestKMZGeneratorIntegration:
         output_path = tmp_path / "test_output.kmz"
 
         # Create generator and add photos using context manager
-        with KMZGenerator(str(output_path), thumbnail_size=(400, 300)) as generator:
+        with KMZGenerator(str(output_path), thumbnail_size='small') as generator:
             for jpg_file in jpg_files:
                 # Get GPS data
                 from images2kmz.image_processor import extract_gps_data
@@ -847,7 +847,7 @@ class TestKMZGeneratorIntegration:
 
         # Step 1: Process images
         from images2kmz.image_processor import ImageProcessor
-        processor = ImageProcessor(thumbnail_size=(400, 300))
+        processor = ImageProcessor(thumbnail_size='small')
         processed = processor.process_directory(str(sample_dir), recursive=False)
 
         if not processed:

@@ -433,8 +433,8 @@ class TestImageProcessor:
 
         Should set thumbnail_size and initialize stats.
         """
-        processor = ImageProcessor(thumbnail_size=(400, 300))
-        assert processor.thumbnail_size == (400, 300)
+        processor = ImageProcessor(thumbnail_size='small')
+        assert processor.thumbnail_size == 'small'
         assert processor.stats['total_found'] == 0
         assert processor.stats['processed'] == 0
 
@@ -442,10 +442,10 @@ class TestImageProcessor:
         """
         Test ImageProcessor with default parameters.
 
-        Should use (800, 600) as default thumbnail size.
+        Should use 'medium' as default thumbnail size.
         """
         processor = ImageProcessor()
-        assert processor.thumbnail_size == (800, 600)
+        assert processor.thumbnail_size == 'medium'
         assert processor.stats['total_found'] == 0
 
     @patch('images2kmz.image_processor.get_image_files')
@@ -461,7 +461,7 @@ class TestImageProcessor:
         mock_gps.return_value = GPSData(49.441272, -95.405539)
         mock_thumbnail.return_value = b'fake_thumbnail'
 
-        processor = ImageProcessor(thumbnail_size=(400, 300))
+        processor = ImageProcessor(thumbnail_size='small')
         result = processor.process_directory('/test/dir', recursive=False)
 
         assert len(result) == 2
@@ -494,7 +494,7 @@ class TestImageProcessor:
         if not sample_dir.exists():
             pytest.skip("sample-images2 directory not found")
 
-        processor = ImageProcessor(thumbnail_size=(400, 300))
+        processor = ImageProcessor(thumbnail_size='small')
         result = processor.process_directory(str(sample_dir), recursive=False)
 
         # Should process some images (depending on GPS availability)
@@ -615,3 +615,4 @@ def test_extract_capture_date_fallback(mock_file, mock_process_file, mock_getmti
     from datetime import datetime
     dt = extract_capture_date("dummy.jpg")
     assert dt == datetime.fromtimestamp(1730227452.0)
+

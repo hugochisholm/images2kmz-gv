@@ -35,7 +35,7 @@ class KMZGenerator(AbstractContextManager):
     def __init__(
         self,
         output_path: str,
-        thumbnail_size: tuple[int, int] = (800, 600),
+        thumbnail_size: str = 'medium',
         progress_callback: Callable[[int, int, str], None] | None = None,
         placemark_config: PlacemarkConfig | None = None,
     ):
@@ -43,7 +43,7 @@ class KMZGenerator(AbstractContextManager):
 
         Args:
             output_path: Path for output KMZ file
-            thumbnail_size: Maximum thumbnail dimensions (for reference)
+            thumbnail_size: Preset size for thumbnails ('small', 'medium', 'large')
             progress_callback: Optional callback(current, total, filename) for progress tracking
             placemark_config: Configuration for placemark info card fields
         """
