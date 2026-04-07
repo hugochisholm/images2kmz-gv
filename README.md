@@ -10,7 +10,7 @@ Python CLI tool for creating KMZ (Google Earth) files from geotagged photos.
 - Thumbnail generation for Google Earth
 - Compass bearing icon rotation based on photo direction
 - Progress indicators with rich console output
-- Export to CSV with UTM coordinates for AutoCAD
+- Export to CSV with UTM coordinates for AutoCAD (includes custom date-based point numbering, azimuth info, and full photo paths)
 - Configurable placemark info fields (direction, location, photo path, description)
 - Preset modes for common configurations (full, minimal, client)
 - ExtendedData support for structured info display in KML balloons
@@ -126,7 +126,6 @@ Process photos in specified directory:
 images2kmz ~/Photos
 # Output: ~/Photos/images2kmz/photos.kmz
 ```
-
 Process photos recursively:
 ```bash
 images2kmz ~/Photos -r
@@ -141,9 +140,20 @@ images2kmz ~/Photos -o ~/Desktop/vacation.kmz
 
 Custom thumbnail size:
 ```bash
-images2kmz ~/Photos --thumbnail-size 1024 768
+images2kmz ~/Photos --thumbnail-size 400 300
 ```
 
+#### CSV Export Format
+
+When exporting to CSV using the `--csv` flag, the output file `photo_points.csv` includes the following 6 columns without a header row:
+1. **Point Number:** Generated based on the photo's EXIF capture date (or file modification date) and a sequence number starting at 9001 (e.g., `YYMMDD9001`).
+2. **Northing:** The UTM northing coordinate (to 4 decimal places).
+3. **Easting:** The UTM easting coordinate (to 4 decimal places).
+4. **Elevation:** The GPS altitude extracted from EXIF (0.0000 if not available).
+5. **Description:** Contains the camera azimuth/bearing and photo description, e.g., `PHOTO(145) Site Location B` or just `PHOTO Site Location B` if azimuth is unavailable.
+6. **File Path:** The absolute file path to the original photo (same as the "Open Original Photo" link in the KMZ).
+
+### As a Python Module
 Control placemark info fields:
 ```bash
 # Show only location and description (no direction or photo path)
