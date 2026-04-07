@@ -100,6 +100,9 @@ class TestCSVExporter:
             assert rows[0][4] == 'PHOTO Test Point'
             # Elevation should be 10.0 (not empty)
             assert rows[0][3] == '10.0000'
+            # 6th column should be the absolute file path
+            from images2kmz.utils import get_absolute_path
+            assert rows[0][5] == get_absolute_path('/path/to/photo.jpg')
 
     def test_export_capture_date(self):
         """Test export with capture date."""

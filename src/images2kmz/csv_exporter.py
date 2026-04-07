@@ -10,6 +10,7 @@ from pathlib import Path
 from pyproj import Transformer
 
 from .image_processor import GPSData
+from .utils import get_absolute_path
 
 logger = logging.getLogger(__name__)
 
@@ -181,6 +182,9 @@ class CSVExporter:
                 else:
                     description = f"PHOTO {photo_desc}"
 
+                # Get the absolute file path
+                file_path = get_absolute_path(img_data['path'])
+
                 # Write row
                 writer.writerow([
                     point_number,
@@ -188,6 +192,7 @@ class CSVExporter:
                     f"{easting:.4f}",   # Easting to 4 decimal places
                     f"{elevation:.4f}",  # Elevation always present (0 if none)
                     description,
+                    file_path,  # Absolute file path
                 ])
 
                 sequence += 1
