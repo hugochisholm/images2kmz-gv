@@ -207,7 +207,7 @@ class Images2KMZApp(App):
                     "input_dir": "Input Directory",
                     "output": "Output Directory",
                     "recursive": "Include Subdirectories",
-                    "thumbnail_size": "Thumbnail Size (W,H)",
+                    "thumbnail_size": "Thumbnail Size Preset",
                     "preset": "Placemark Preset",
                     "placemark_fields": "Placemark Fields",
                     "no_photo_path": "Hide Photo Path",
@@ -303,12 +303,7 @@ class Images2KMZApp(App):
                     args_dict[dest] = widget.value if widget.value != Select.BLANK else None
                 elif isinstance(widget, Input):
                     val = widget.value
-                    if dest == 'thumbnail_size': # Special case for nargs=2 integer list
-                        try:
-                            args_dict[dest] = [int(x.strip()) for x in val.split(",")]
-                        except Exception:
-                            args_dict[dest] = [800, 600]
-                    elif dest == 'max_images':
+                    if dest == 'max_images':
                         try:
                             args_dict[dest] = int(val)
                         except ValueError:
