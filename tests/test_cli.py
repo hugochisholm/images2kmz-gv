@@ -27,6 +27,7 @@ class TestCreateParser:
         assert args.recursive is False
         assert args.thumbnail_size == [800, 600]
         assert args.no_photo_path is False
+        assert args.max_images_per_file == 100
 
     def test_create_parser_full_options(self):
         """Test parser with all options specified."""
@@ -36,7 +37,8 @@ class TestCreateParser:
             '-o', 'output.kmz',
             '-r',
             '--thumbnail-size', '1024', '768',
-                        '--no-photo-path'
+                        '--no-photo-path',
+            '--max-images-per-file', '50'
         ]
         args = parser.parse_args(cmd_args)
         assert args.input_dir == '/path/to/photos'
@@ -44,6 +46,7 @@ class TestCreateParser:
         assert args.recursive is True
         assert args.thumbnail_size == [1024, 768]
         assert args.no_photo_path is True
+        assert args.max_images_per_file == 50
 
 class TestPromptForDirectory:
     """Tests for interactive directory prompting."""

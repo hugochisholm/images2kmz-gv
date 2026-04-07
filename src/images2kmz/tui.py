@@ -212,6 +212,7 @@ class Images2KMZApp(App):
                     "csv": "Export CSV",
                     "coordinate_system": "Coordinate System",
                     "log_file": "Enable Log File",
+                    "max_images_per_file": "Max Images Per File",
                     "verbose": "Verbose Output",
                 }
                 label = friendly_labels.get(action.dest, action.dest)

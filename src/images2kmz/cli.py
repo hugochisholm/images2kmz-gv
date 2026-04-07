@@ -126,6 +126,13 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        '--max-images-per-file',
+        type=int,
+        default=100,
+        help='Maximum number of images per KMZ file (default: 100, 0 for unlimited)'
+    )
+
+    parser.add_argument(
         '--coordinate-system',
         type=str,
         default='EPSG:4269',
