@@ -19,8 +19,8 @@ class UIHandler(Protocol):
     def print_summary(
         self,
         processor_stats: Dict[str, Any],
-        kmz_generator: Optional[KMZGenerator],
-        output_path: Optional[str],
+        kmz_generator: Optional[KMZGenerator | List[KMZGenerator]],
+        output_path: Optional[str | List[str]],
         csv_path: Optional[str] = None,
         no_gps: Optional[List[str]] = None,
         no_direction: Optional[List[str]] = None,
@@ -65,8 +65,8 @@ class RichUIHandler:
     def print_summary(
         self,
         processor_stats: Dict[str, Any],
-        kmz_generator: Optional[KMZGenerator],
-        output_path: Optional[str],
+        kmz_generator: Optional[KMZGenerator | List[KMZGenerator]],
+        output_path: Optional[str | List[str]],
         csv_path: Optional[str] = None,
         no_gps: Optional[List[str]] = None,
         no_direction: Optional[List[str]] = None,
@@ -93,12 +93,16 @@ class RichUIHandler:
         
         # Output file info
         if processed > 0 and kmz_generator and output_path:
-            file_size = kmz_generator.get_formatted_file_size()
-            if file_size:
-                self.console.print(f"[green]📦 Output: {Path(output_path).name} ({file_size})[/green]")
-            else:
-                self.console.print(f"[green]📦 Output: {Path(output_path).name}[/green]")
-            self.console.print(f"   [dim]Path: {output_path}[/dim]")
+            kmz_gens = kmz_generator if isinstance(kmz_generator, list) else [kmz_generator]
+            out_paths = output_path if isinstance(output_path, list) else [output_path]
+            
+            for gen, path in zip(kmz_gens, out_paths):
+                file_size = gen.get_formatted_file_size()
+                if file_size:
+                    self.console.print(f"[green]📦 Output: {Path(path).name} ({file_size})[/green]")
+                else:
+                    self.console.print(f"[green]📦 Output: {Path(path).name}[/green]")
+                self.console.print(f"   [dim]Path: {path}[/dim]")
         else:
             self.console.print("\n[bold yellow]⚠ No photos with GPS data found. KMZ file not created.[/bold yellow]")
         

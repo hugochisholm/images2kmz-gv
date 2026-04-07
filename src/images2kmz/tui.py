@@ -45,8 +45,8 @@ class TextualUIHandler(UIHandler):
     def print_summary(
         self,
         processor_stats: Dict[str, Any],
-        kmz_generator: Optional[KMZGenerator],
-        output_path: Optional[str],
+        kmz_generator: Optional[KMZGenerator | List[KMZGenerator]],
+        output_path: Optional[str | List[str]],
         csv_path: Optional[str] = None,
         no_gps: Optional[List[str]] = None,
         no_direction: Optional[List[str]] = None,
@@ -55,7 +55,9 @@ class TextualUIHandler(UIHandler):
         if processor_stats['skipped_no_gps'] > 0:
             self.app.call_from_thread(self.app.log_message, f"[yellow]Skipped {processor_stats['skipped_no_gps']} files (no GPS data)[/yellow]")
         if output_path:
-            self.app.call_from_thread(self.app.log_message, f"[green]KMZ saved to: {output_path}[/green]")
+            out_paths = output_path if isinstance(output_path, list) else [output_path]
+            for path in out_paths:
+                self.app.call_from_thread(self.app.log_message, f"[green]KMZ saved to: {path}[/green]")
         if csv_path:
             self.app.call_from_thread(self.app.log_message, f"[green]CSV saved to: {csv_path}[/green]")
 
