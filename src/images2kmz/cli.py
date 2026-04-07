@@ -61,12 +61,11 @@ def create_parser() -> argparse.ArgumentParser:
     
     parser.add_argument(
         '--thumbnail-size',
-        type=int,
-         nargs=2,
-         metavar=('WIDTH', 'HEIGHT'),
-         default=[800, 600],
-         help='Maximum thumbnail dimensions in pixels (default: 800 600)'
-     )
+        type=str,
+        choices=['small', 'medium', 'large'],
+        default='medium',
+        help="Thumbnail size preset: 'small' (800px max), 'medium' (1200px max, default), or 'large' (1800px max)"
+    )
     
     parser.add_argument(
         '--version',
@@ -404,7 +403,7 @@ def execute_run(parsed_args: argparse.Namespace, ui: UIHandler) -> int:
         logger.info(f"Thumbnail size: {parsed_args.thumbnail_size}")
         ui.print_info(f"\n[cyan]Input directory: {input_dir}[/cyan]")
         ui.print_info(f"[cyan]Recursive search: {'Yes' if parsed_args.recursive else 'No'}[/cyan]")
-        ui.print_info(f"[cyan]Thumbnail size: {parsed_args.thumbnail_size[0]}x{parsed_args.thumbnail_size[1]}[/cyan]")
+        ui.print_info(f"[cyan]Thumbnail size preset: {parsed_args.thumbnail_size}[/cyan]")
         
         # Handle HEIC files
         ui.print_info("\n[bold cyan]🔍 Scanning for images...[/bold cyan]")
@@ -424,7 +423,7 @@ def execute_run(parsed_args: argparse.Namespace, ui: UIHandler) -> int:
             )
         
         # Phase 2: Process images with progress bar
-        thumbnail_size = tuple(parsed_args.thumbnail_size)
+        thumbnail_size = parsed_args.thumbnail_size
         processor = ImageProcessor(thumbnail_size=thumbnail_size)
         
         from .image_processor import get_image_files

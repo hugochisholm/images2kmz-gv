@@ -25,7 +25,7 @@ class TestCreateParser:
         assert args.input_dir is None
         assert args.output == 'photos.kmz'
         assert args.recursive is False
-        assert args.thumbnail_size == [800, 600]
+        assert args.thumbnail_size == 'medium'
         assert args.no_photo_path is False
         assert args.max_images == 100
 
@@ -36,7 +36,7 @@ class TestCreateParser:
             '/path/to/photos',
             '-o', 'output.kmz',
             '-r',
-            '--thumbnail-size', '1024', '768',
+            '--thumbnail-size', 'small',
                         '--no-photo-path',
             '--max-images', '50'
         ]
@@ -44,7 +44,7 @@ class TestCreateParser:
         assert args.input_dir == '/path/to/photos'
         assert args.output == 'output.kmz'
         assert args.recursive is True
-        assert args.thumbnail_size == [1024, 768]
+        assert args.thumbnail_size == 'small'
         assert args.no_photo_path is True
         assert args.max_images == 50
 
