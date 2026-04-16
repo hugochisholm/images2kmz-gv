@@ -1,18 +1,30 @@
+from __future__ import annotations
+
 import argparse
-import typing
-from typing import Dict, Any, Optional, List
+from collections.abc import Iterable
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from textual.app import App, ComposeResult
-from textual.screen import ModalScreen
-from textual.widgets import Header, Footer, Input, Checkbox, Select, Button, RichLog, ProgressBar as TextualProgressBar, Label, DirectoryTree
-from textual.containers import VerticalScroll, Vertical, Horizontal
 from textual import work
+from textual.app import App, ComposeResult
+from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.screen import ModalScreen
+from textual.widgets import (
+    Button,
+    Checkbox,
+    DirectoryTree,
+    Footer,
+    Header,
+    Input,
+    Label,
+    ProgressBar as TextualProgressBar,
+    RichLog,
+    Select,
+)
 
-from .ui_handler import UIHandler
-from .core import KMZGenerator
 from .cli import execute_run
-
+from .core import KMZGenerator
+from .ui_handler import UIHandler
 
 class TextualUIHandler(UIHandler):
     def __init__(self, app: App):
@@ -63,7 +75,7 @@ class TextualUIHandler(UIHandler):
 
 
 class FilteredDirectoryTree(DirectoryTree):
-    def filter_paths(self, paths: typing.Iterable[Path]) -> typing.Iterable[Path]:
+    def filter_paths(self, paths: Iterable[Path]) -> Iterable[Path]:
         return [path for path in paths if not path.name.startswith(".")]
 
 class DirectoryPickerScreen(ModalScreen[str]):
@@ -299,8 +311,15 @@ class Images2KMZApp(App):
                 if isinstance(widget, Checkbox):
                     args_dict[dest] = widget.value
                 elif isinstance(widget, Select):
-                    # Handle empty select correctly
-                    args_dict[dest] = widget.value if widget.value != Select.BLANK else None
+                    # Handle empty select correctly. All valid options are strings.
+                    # Textual uses Select.BLANK (which is a NoSelection sentinel) for empty selection.
+                    val = widget.value
+                    if isinstance(val, str):
+                        args_dict[dest] = val
+                    else:
+                        # Fallback to argparse default if empty
+                        action = actions_by_dest.get(dest)
+                        args_dict[dest] = action.default if action else None
                 elif isinstance(widget, Input):
                     val = widget.value
                     if dest == 'max_images':
