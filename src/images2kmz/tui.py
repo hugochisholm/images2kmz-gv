@@ -226,6 +226,7 @@ class Images2KMZApp(App):
                             yield self.create_widget_by_dest("thumbnail_size")
                             yield Label("Max Images", classes="field-label")
                             yield self.create_widget_by_dest("max_images")
+                            yield Label("Include Subdirectories", classes="field-label")
                             yield self.create_widget_by_dest("recursive")
                         
                         with TabPane("Placemarks"):
@@ -233,13 +234,17 @@ class Images2KMZApp(App):
                             yield self.create_widget_by_dest("preset")
                             yield Label("Placemark Fields", classes="field-label")
                             yield self.create_widget_by_dest("placemark_fields")
+                            yield Label("Hide Photo Path", classes="field-label")
                             yield self.create_widget_by_dest("no_photo_path")
                         
                         with TabPane("Advanced"):
+                            yield Label("Export CSV", classes="field-label")
                             yield self.create_widget_by_dest("csv")
                             yield Label("Coordinate System", classes="field-label")
                             yield self.create_widget_by_dest("coordinate_system")
+                            yield Label("Enable Log File", classes="field-label")
                             yield self.create_widget_by_dest("log_file")
+                            yield Label("Verbose Output", classes="field-label")
                             yield self.create_widget_by_dest("verbose")
                 
                 with Horizontal(id="bottom-buttons"):
@@ -257,24 +262,9 @@ class Images2KMZApp(App):
         action = actions_by_dest.get(dest)
         if not action: return Static(f"Unknown: {dest}")
 
-        friendly_labels = {
-            "input_dir": "Input Directory",
-            "output": "Output Directory",
-            "recursive": "Include Subdirectories",
-            "thumbnail_size": "Thumbnail Size Preset",
-            "preset": "Placemark Preset",
-            "placemark_fields": "Placemark Fields",
-            "no_photo_path": "Hide Photo Path",
-            "csv": "Export CSV",
-            "coordinate_system": "Coordinate System",
-            "log_file": "Enable Log File",
-            "max_images": "Max Images Per File",
-            "verbose": "Verbose Output",
-        }
-        label = friendly_labels.get(action.dest, action.dest)
         
         if isinstance(action, argparse._StoreTrueAction):
-            cb = Checkbox(label, id=f"input_{action.dest}", value=action.default)
+            cb = Checkbox("", id=f"input_{action.dest}", value=action.default)
             self.inputs[action.dest] = cb
             return cb
         elif action.choices:
