@@ -20,6 +20,9 @@ from textual.widgets import (
     ProgressBar as TextualProgressBar,
     RichLog,
     Select,
+    Static,
+    TabbedContent,
+    TabPane,
 )
 
 from .cli import execute_run
@@ -152,25 +155,23 @@ class Images2KMZApp(App):
     TITLE = "Images2KMZ - TUI"
     
     CSS = """
-    .form-container { padding: 1; height: auto; }
-    #middle-groups {
-        height: auto;
-        min-height: 20;
-    }
+    .form-container { padding: 1; height: 1fr; border-right: solid $accent; }
+    .log-container { height: 1fr; background: $surface; }
+    #main-layout { layout: horizontal; }
+    #left-pane { width: 40%; height: 1fr; }
+    #right-pane { width: 60%; height: 1fr; }
     .group-container { 
-        border: round gray; 
         margin-bottom: 1; 
         padding: 1;
         height: auto;
     }
-    #middle-groups .group-container {
-        width: 1fr;
-        margin-right: 1;
-    }
-    .group-label {
-        margin-bottom: 1;
-        text-align: center;
+    .field-label {
+        margin-top: 1;
+        margin-bottom: 0;
+        text-align: left;
         width: 100%;
+        color: $accent;
+        font-style: bold;
     }
     .input-row {
         height: auto;
@@ -183,24 +184,20 @@ class Images2KMZApp(App):
         width: 15;
         margin-left: 1;
     }
-    .log-container { height: 1fr; border: solid green; }
     #bottom-buttons {
         height: auto;
         layout: horizontal;
         margin-top: 1;
+        padding: 1;
     }
     #bottom-buttons Button {
         width: 1fr;
         margin-right: 1;
     }
-    """
-
-    FLAG_GROUPS = {
-        "Paths & Files": ["input_dir", "output"],
-        "Processing": ["recursive", "thumbnail_size", "max_images"],
-        "Placemark Content": ["preset", "placemark_fields", "no_photo_path"],
-        "Export & Logs": ["csv", "coordinate_system", "log_file", "verbose"],
+    TabbedContent {
+        height: 1fr;
     }
+    """
 
     def __init__(self, parser: argparse.ArgumentParser):
         super().__init__()
@@ -209,97 +206,93 @@ class Images2KMZApp(App):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        with VerticalScroll(classes="form-container", id="form-container"):
-            added_actions = set()
-            actions_by_dest = {action.dest: action for action in self.parser._actions 
-                              if action.dest not in ('help', 'version', 'tui')}
-            
-            def create_widget(action):
-                friendly_labels = {
-                    "input_dir": "Input Directory",
-                    "output": "Output Directory",
-                    "recursive": "Include Subdirectories",
-                    "thumbnail_size": "Thumbnail Size Preset",
-                    "preset": "Placemark Preset",
-                    "placemark_fields": "Placemark Fields",
-                    "no_photo_path": "Hide Photo Path",
-                    "csv": "Export CSV",
-                    "coordinate_system": "Coordinate System",
-                    "log_file": "Enable Log File",
-                    "max_images": "Max Images Per File",
-                    "verbose": "Verbose Output",
-                }
-                label = friendly_labels.get(action.dest, action.dest)
+        with Horizontal(id="main-layout"):
+            with Vertical(id="left-pane"):
+                with VerticalScroll(classes="form-container", id="form-container"):
+                    # Path fields always visible
+                    yield Label("Input Directory", classes="field-label")
+                    with Horizontal(classes="input-row"):
+                        yield self.create_widget_by_dest("input_dir")
+                        yield Button("Browse", id="browse_input_dir", variant="primary")
+                    
+                    yield Label("Output Directory", classes="field-label")
+                    with Horizontal(classes="input-row"):
+                        yield self.create_widget_by_dest("output")
+                        yield Button("Browse", id="browse_output", variant="primary")
+
+                    with TabbedContent():
+                        with TabPane("Processing"):
+                            yield Label("Thumbnail Size", classes="field-label")
+                            yield self.create_widget_by_dest("thumbnail_size")
+                            yield Label("Max Images", classes="field-label")
+                            yield self.create_widget_by_dest("max_images")
+                            yield self.create_widget_by_dest("recursive")
+                        
+                        with TabPane("Placemarks"):
+                            yield Label("Preset", classes="field-label")
+                            yield self.create_widget_by_dest("preset")
+                            yield Label("Placemark Fields", classes="field-label")
+                            yield self.create_widget_by_dest("placemark_fields")
+                            yield self.create_widget_by_dest("no_photo_path")
+                        
+                        with TabPane("Advanced"):
+                            yield self.create_widget_by_dest("csv")
+                            yield Label("Coordinate System", classes="field-label")
+                            yield self.create_widget_by_dest("coordinate_system")
+                            yield self.create_widget_by_dest("log_file")
+                            yield self.create_widget_by_dest("verbose")
                 
-                if isinstance(action, argparse._StoreTrueAction):
-                    cb = Checkbox(label, id=f"input_{action.dest}", value=action.default)
-                    self.inputs[action.dest] = cb
-                    return cb
-                elif action.choices:
-                    options = [(str(c), str(c)) for c in action.choices]
-                    sel = Select(options, prompt=label, id=f"input_{action.dest}")
-                    if action.default:
-                        sel.value = str(action.default)
-                    self.inputs[action.dest] = sel
-                    return sel
-                else:
-                    default_val = str(action.default) if action.default is not None else ""
-                    if action.dest == "output":
-                        default_val = ""
-                        label = "Output Directory (Default: <input_dir>/images2kmz/)"
-                    elif isinstance(action.default, list):
-                        default_val = ",".join(map(str, action.default))
-                    inp = Input(placeholder=label, value=default_val, id=f"input_{action.dest}")
-                    self.inputs[action.dest] = inp
-                    return inp
-
-            # 1. Paths & Files (Top, Full Width)
-            group_name = "Paths & Files"
-            dests = self.FLAG_GROUPS[group_name]
-            if any(d in actions_by_dest for d in dests):
-                with Vertical(classes="group-container"):
-                    yield Label(f"[bold cyan]{group_name}[/bold cyan]", classes="group-label")
-                    for d in dests:
-                        if d in actions_by_dest:
-                            widget = create_widget(actions_by_dest[d])
-                            if d in ("input_dir", "output"):
-                                with Horizontal(classes="input-row"):
-                                    yield widget
-                                    yield Button("Browse", id=f"browse_{d}", variant="primary")
-                            else:
-                                yield widget
-                            added_actions.add(d)
-
-            # 2. Middle Groups (Horizontal)
-            middle_group_names = ["Processing", "Placemark Content", "Export & Logs"]
-            if any(d in actions_by_dest for g in middle_group_names for d in self.FLAG_GROUPS[g]):
-                with Horizontal(id="middle-groups"):
-                    for group_name in middle_group_names:
-                        dests = self.FLAG_GROUPS[group_name]
-                        with Vertical(classes="group-container"):
-                            yield Label(f"[bold cyan]{group_name}[/bold cyan]", classes="group-label")
-                            for d in dests:
-                                if d in actions_by_dest:
-                                    yield create_widget(actions_by_dest[d])
-                                    added_actions.add(d)
-
-            # 3. Other Options
-            remaining_actions = [a for d, a in actions_by_dest.items() if d not in added_actions]
-            if remaining_actions:
-                with Vertical(classes="group-container"):
-                    yield Label("[bold cyan]Other Options[/bold cyan]", classes="group-label")
-                    for action in remaining_actions:
-                        yield create_widget(action)
+                with Horizontal(id="bottom-buttons"):
+                    yield Button("Run", id="btn_run", variant="success")
+                    yield Button("Exit", id="btn_exit", variant="error")
             
-            with Horizontal(id="bottom-buttons"):
-                yield Button("Run", id="btn_run", variant="success")
-                yield Button("Exit", id="btn_exit", variant="error")
+            with Vertical(id="right-pane", classes="log-container"):
+                yield TextualProgressBar(id="progress_bar", show_eta=False)
+                yield RichLog(id="log_view", markup=True)
         
-        with Vertical(classes="log-container"):
-            yield TextualProgressBar(id="progress_bar", show_eta=False)
-            yield RichLog(id="log_view", markup=True)
-            
         yield Footer()
+
+    def create_widget_by_dest(self, dest: str):
+        actions_by_dest = {action.dest: action for action in self.parser._actions}
+        action = actions_by_dest.get(dest)
+        if not action: return Static(f"Unknown: {dest}")
+
+        friendly_labels = {
+            "input_dir": "Input Directory",
+            "output": "Output Directory",
+            "recursive": "Include Subdirectories",
+            "thumbnail_size": "Thumbnail Size Preset",
+            "preset": "Placemark Preset",
+            "placemark_fields": "Placemark Fields",
+            "no_photo_path": "Hide Photo Path",
+            "csv": "Export CSV",
+            "coordinate_system": "Coordinate System",
+            "log_file": "Enable Log File",
+            "max_images": "Max Images Per File",
+            "verbose": "Verbose Output",
+        }
+        label = friendly_labels.get(action.dest, action.dest)
+        
+        if isinstance(action, argparse._StoreTrueAction):
+            cb = Checkbox(label, id=f"input_{action.dest}", value=action.default)
+            self.inputs[action.dest] = cb
+            return cb
+        elif action.choices:
+            options = [(str(c), str(c)) for c in action.choices]
+            sel = Select(options, prompt="Select...", id=f"input_{action.dest}")
+            if action.default:
+                sel.value = str(action.default)
+            self.inputs[action.dest] = sel
+            return sel
+        else:
+            default_val = str(action.default) if action.default is not None else ""
+            if action.dest == "output":
+                default_val = ""
+            elif isinstance(action.default, list):
+                default_val = ",".join(map(str, action.default))
+            inp = Input(value=default_val, id=f"input_{action.dest}")
+            self.inputs[action.dest] = inp
+            return inp
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "btn_run":
