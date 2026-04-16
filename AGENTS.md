@@ -176,6 +176,8 @@ images2kmz/
 │       ├── placemark_html_builder.py  # HTML/ExtendedData generation
 │       ├── logging_config.py    # Logging configuration
 │       ├── progress.py          # Progress display utilities
+│       ├── tui.py               # GeoVerra-branded TUI with directory picker
+│       ├── ui_handler.py        # Interface for UI progress and output
 │       └── utils.py             # Utility functions (paths, formatting)
 ├── tests/
 │   ├── conftest.py        # pytest fixtures
@@ -301,7 +303,7 @@ logging.getLogger("simplekml").setLevel(logging.WARNING)
 ### Default Output Directory
 
 When no explicit `-o` output is specified, all output files go to `{input_dir}/images2kmz/`:
-- KMZ file: `{input_dir}/images2kmz/photos.kmz`
+- KMZ file: `{input_dir}/images2kmz/photos.kmz` (if chunked due to `--max-images`, they will be named `photos_1.kmz`, `photos_2.kmz`, etc.)
 - CSV file (with `--csv`): `{input_dir}/images2kmz/photo_points.csv`
 - Log file (with `--log-file` or `--verbose`): `{input_dir}/images2kmz/images2kmz.log`
 

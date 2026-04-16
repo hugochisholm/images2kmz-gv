@@ -6,9 +6,9 @@ extract GPS coordinates, create thumbnails, and generate KMZ files
 suitable for viewing in Google Earth and other mapping applications.
 """
 
-__version__ = '0.3.0'
-__author__ = 'Hugo Chisholm'
-__license__ = 'MIT'
+__version__ = "0.4.0"
+__author__ = "Hugo Chisholm"
+__license__ = "MIT"
 
 # Core functionality
 from .core import KMZGenerator
@@ -18,13 +18,13 @@ from .image_processor import (
     extract_gps_data,
     create_thumbnail,
     get_image_files,
-    is_supported_format
+    is_supported_format,
 )
 from .heic_handler import (
     HEICHandler,
     find_heic_files,
     convert_heic_to_jpg,
-    batch_convert_heic
+    batch_convert_heic,
 )
 from .placemark_config import PlacemarkConfig
 from .placemark_html_builder import PlacemarkHtmlBuilder
@@ -32,7 +32,7 @@ from .utils import (
     get_absolute_path,
     create_file_uri,
     ensure_directory_exists,
-    format_file_size
+    format_file_size,
 )
 
 # CLI
@@ -40,28 +40,28 @@ from .cli import run, main
 
 __all__ = [
     # Core
-    'KMZGenerator',
+    "KMZGenerator",
     # Image processing
-    'ImageProcessor',
-    'GPSData',
-    'extract_gps_data',
-    'create_thumbnail',
-    'get_image_files',
-    'is_supported_format',
+    "ImageProcessor",
+    "GPSData",
+    "extract_gps_data",
+    "create_thumbnail",
+    "get_image_files",
+    "is_supported_format",
     # HEIC handling
-    'HEICHandler',
-    'find_heic_files',
-    'convert_heic_to_jpg',
-    'batch_convert_heic',
+    "HEICHandler",
+    "find_heic_files",
+    "convert_heic_to_jpg",
+    "batch_convert_heic",
     # Placemark configuration
-    'PlacemarkConfig',
-    'PlacemarkHtmlBuilder',
+    "PlacemarkConfig",
+    "PlacemarkHtmlBuilder",
     # Utilities
-    'get_absolute_path',
-    'create_file_uri',
-    'ensure_directory_exists',
-    'format_file_size',
+    "get_absolute_path",
+    "create_file_uri",
+    "ensure_directory_exists",
+    "format_file_size",
     # CLI
-    'run',
-    'main',
+    "run",
+    "main",
 ]

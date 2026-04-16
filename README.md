@@ -9,7 +9,10 @@ Python CLI tool for creating KMZ (Google Earth) files from geotagged photos.
 - Automatic GPS coordinate extraction
 - Thumbnail generation for Google Earth
 - Compass bearing icon rotation based on photo direction
-- Progress indicators with rich console output
+- Progress indicators with real-time updating progress bars in TUI
+- Enhanced TUI with GeoVerra branding and built-in filesystem browser
+- Persistence: Progress bars and summaries are preserved in the TUI log for auditability
+- Summary Transparency: Always displays data integrity panels (missing location/direction)
 - Export to CSV with UTM coordinates for AutoCAD (includes custom date-based point numbering, azimuth info, and full photo paths)
 - Configurable placemark info fields (direction, location, photo path, description)
 - Preset modes for common configurations (full, minimal, client)
@@ -109,7 +112,7 @@ images2kmz --help
 - `-r, --recursive`: Recursively search subdirectories
 - `--thumbnail-size PRESET`: Thumbnail size preset ('small', 'medium', or 'large', default: medium)
 - `--max-images N`: Maximum number of images per KMZ output file (default: 100, 0 for unlimited)
-- `--tui`: Launch the interactive terminal user interface (TUI) with directory browser
+- `--tui`: Launch the interactive terminal user interface (TUI) with a GeoVerra-branded theme and directory browser. Features real-time progress bars and persistent logs.
 - `-v, --verbose`: Enable verbose console output with timestamped log file
 - `-l, --log-file`: Enable debug log file (default: `{input_dir}/images2kmz/images2kmz.log`)
 - `--csv`: Export photo coordinates to CSV file (default: `{input_dir}/images2kmz/photo_points.csv`)
