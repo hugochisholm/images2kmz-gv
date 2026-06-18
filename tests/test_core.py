@@ -242,45 +242,47 @@ class TestKMZGeneratorAddPhoto:
         """
         Test photo with bearing sets directional icon and rotation.
 
-        Should set track-0.png icon with heading rotation.
+        Should set track-0.png icon (embedded in KMZ) with heading rotation.
         Must use context manager to initialize temp directory.
         """
         mock_kml = Mock()
-        mock_kml.addfile.return_value = 'files/thumb.jpg'
+        # __init__ calls addfile twice (icons), add_photo calls it once (thumbnail)
+        mock_kml.addfile.side_effect = ['files/track-0.png', 'files/track-none.png', 'files/thumb.jpg']
         mock_point = Mock()
         mock_kml.newpoint.return_value = mock_point
-        
+
         with patch('images2kmz.core.simplekml.Kml', return_value=mock_kml):
             with KMZGenerator('/test.kmz') as generator:
                 gps = GPSData(49.44, -95.41)
                 bearing = {'azimuth': 45, 'compass': 'NE', 'raw_text': 'NE 45°'}
-                
+
                 generator.add_photo('/photo.jpg', gps, b'thumb', bearing=bearing)
-        
-        # Verify icon style is set correctly
-        assert mock_point.style.iconstyle.icon.href == 'http://earth.google.com/images/kml-icons/track-directional/track-0.png'
+
+        # Verify directional icon is embedded and heading is set
+        assert mock_point.style.iconstyle.icon.href == 'files/track-0.png'
         assert mock_point.style.iconstyle.heading == 45
 
     def test_add_photo_without_bearing_sets_none_icon(self):
         """
         Test photo without bearing sets non-directional icon.
 
-        Should set track-none.png icon without rotation.
+        Should set track-none.png icon (embedded in KMZ) without rotation.
         Must use context manager to initialize temp directory.
         """
         mock_kml = Mock()
-        mock_kml.addfile.return_value = 'files/thumb.jpg'
+        # __init__ calls addfile twice (icons), add_photo calls it once (thumbnail)
+        mock_kml.addfile.side_effect = ['files/track-0.png', 'files/track-none.png', 'files/thumb.jpg']
         mock_point = Mock()
         mock_kml.newpoint.return_value = mock_point
-        
+
         with patch('images2kmz.core.simplekml.Kml', return_value=mock_kml):
             with KMZGenerator('/test.kmz') as generator:
                 gps = GPSData(49.44, -95.41)
-                
+
                 generator.add_photo('/photo.jpg', gps, b'thumb')
-        
-        # Verify icon style is set correctly
-        assert mock_point.style.iconstyle.icon.href == 'http://earth.google.com/images/kml-icons/track-directional/track-none.png'
+
+        # Verify non-directional icon is embedded
+        assert mock_point.style.iconstyle.icon.href == 'files/track-none.png'
 
     def test_add_photo_icon_scale(self):
         """
@@ -875,5 +877,6 @@ class TestKMZGeneratorIntegration:
             with zipfile.ZipFile(output_path, 'r') as kmz:
                 files = kmz.namelist()
                 assert 'doc.kml' in files
+                # files/ contains thumbnails plus the 2 bundled icon PNGs
                 thumbs = [f for f in files if f.startswith('files/')]
-                assert len(thumbs) == len(processed)
+                assert len(thumbs) == len(processed) + 2

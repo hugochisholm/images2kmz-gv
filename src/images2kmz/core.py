@@ -11,6 +11,8 @@ from types import TracebackType
 
 import simplekml
 
+_ICONS_DIR = Path(__file__).parent / "icons"
+
 from .image_processor import GPSData
 from .placemark_config import PlacemarkConfig
 from .placemark_html_builder import PlacemarkHtmlBuilder
@@ -58,6 +60,19 @@ class KMZGenerator(AbstractContextManager):
             'total_size': 0
         }
         self._temp_dir: tempfile.TemporaryDirectory | None = None
+        self._icon_directional: str = self._embed_icon("track-0.png")
+        self._icon_nondirectional: str = self._embed_icon("track-none.png")
+
+    def _embed_icon(self, filename: str) -> str:
+        """Embed a bundled icon PNG into the KMZ and return its in-archive path.
+
+        Falls back to the remote Google Earth URL when the local file is missing.
+        """
+        local_path = _ICONS_DIR / filename
+        if local_path.exists():
+            return self.kml.addfile(local_path)
+        logger.warning("Bundled icon not found, falling back to remote URL: %s", filename)
+        return f"http://earth.google.com/images/kml-icons/track-directional/{filename}"
 
     def __enter__(self) -> KMZGenerator:
         """Enter context manager and create temporary directory."""
@@ -172,13 +187,11 @@ class KMZGenerator(AbstractContextManager):
         
         # Set icon based on photo bearing
         if bearing and bearing.get('azimuth') is not None:
-            # Use directional track icon with rotation
-            pnt.style.iconstyle.icon.href = 'http://earth.google.com/images/kml-icons/track-directional/track-0.png'
+            pnt.style.iconstyle.icon.href = self._icon_directional
             pnt.style.iconstyle.heading = bearing['azimuth']
             pnt.style.iconstyle.scale = 1.4
         else:
-            # Use non-directional track icon
-            pnt.style.iconstyle.icon.href = 'http://earth.google.com/images/kml-icons/track-directional/track-none.png'
+            pnt.style.iconstyle.icon.href = self._icon_nondirectional
             pnt.style.iconstyle.scale = 1.4
         
         # Generate description using HTML builder

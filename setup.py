@@ -11,6 +11,7 @@ setup(
     version="0.4.0",
     package_dir={"": "src"},
     packages=find_packages(where="src"),
+    package_data={"images2kmz": ["icons/*.png"]},
     install_requires=requirements,
     entry_points={
         "console_scripts": [

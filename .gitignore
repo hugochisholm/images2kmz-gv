@@ -56,6 +56,9 @@ htmlcov/
 *.HEIC
 *.HEIF
 
+# Allow bundled package icons
+!src/images2kmz/icons/*.png
+
 # HEIC originals directory
 HEIC originals/
 
