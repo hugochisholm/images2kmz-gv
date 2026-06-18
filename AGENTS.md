@@ -193,6 +193,14 @@ images2kmz/
 │   ├── test_placemark_html_builder.py
 │   ├── test_progress.py
 │   └── test_utils.py
+├── .github/
+│   └── workflows/
+│       └── build-exe.yml  # CI: builds Windows EXE; attaches to GitHub Releases on version tags
+├── runtime_hooks/
+│   └── rthook_pyproj.py   # PyInstaller startup hook: sets PROJ_DATA env var inside frozen bundle
+├── images2kmz.spec        # PyInstaller spec (--onefile Windows EXE)
+├── build_exe.py           # Local build helper: run on Windows to produce dist/images2kmz.exe
+├── main.py                # Top-level CLI entry point; used by PyInstaller (includes freeze_support)
 ├── setup.py               # Package configuration (includes icons/*.png as package_data)
 ├── README.md
 └── requirements*.txt
@@ -326,6 +334,28 @@ Invoking `images2kmz` or `python -m images2kmz` with **no arguments** launches t
 
 `utils.py:create_file_uri()` rewrites paths matching `\\*fs\GV-Volume\Projects\` (e.g. `\\calfs\GV-Volume\Projects\`) to `file:///V:/…`. This maps GeoVerra's network filesystem mounts to the `V:\` drive letter used across all offices, producing more portable file URIs in KMZ placemarks. The pattern is defined as `_GV_NETWORK_RE` at module level.
 
+### Windows EXE Build Pipeline
+
+The project ships a self-contained `images2kmz.exe` built with PyInstaller (--onefile mode).
+
+**Key files:**
+- `images2kmz.spec` — PyInstaller build recipe. Uses `collect_all('textual')` and `collect_all('pillow_heif')` to pull in CSS assets and native DLLs. Bundles `src/images2kmz/icons/` at `images2kmz/icons/` so `core.py`'s `Path(__file__).parent / "icons"` resolves correctly inside the frozen bundle.
+- `runtime_hooks/rthook_pyproj.py` — Runs at EXE startup; sets `PROJ_DATA` and `PROJ_LIB` to `sys._MEIPASS/proj/` so `pyproj` can locate its coordinate database.
+- `build_exe.py` — Run on a Windows machine: `python build_exe.py`. Checks for PyInstaller, invokes the spec with `--clean --noconfirm`, and prints the output path + size.
+- `.github/workflows/build-exe.yml` — Builds on `windows-latest` on every push to `main`/`develop`. Uploads the EXE as a workflow artifact. On version tag pushes (e.g. `v0.4.1`) it also creates a GitHub Release and attaches the EXE.
+
+**Build locally (Windows only):**
+```cmd
+pip install -e .
+pip install pyinstaller
+python build_exe.py
+```
+
+**Spec gotchas to remember:**
+- Do **not** add `html`, `http`, `urllib`, `xml`, or `email` to `excludes` — `simplekml` and other deps import them. Only `tkinter` is safe to exclude.
+- `upx=False` is intentional: UPX compression frequently triggers Windows Defender false positives.
+- `main.py` calls `multiprocessing.freeze_support()` before `main()` — required for PyInstaller onefile on Windows.
+
 ### Git
-- Never commit: `*.kmz`, `*.kml`, sample images (see .gitignore)
+- Never commit: `*.kmz`, `*.kml`, sample images, `dist/`, `build/` (see .gitignore)
 - Never auto-commit - wait for explicit user instruction

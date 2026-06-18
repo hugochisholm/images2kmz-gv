@@ -21,7 +21,18 @@ Python CLI tool for creating KMZ (Google Earth) files from geotagged photos.
 
 ## Installation
 
-### Prerequisites
+### Windows Standalone EXE
+
+The easiest way to use images2kmz on Windows is to download the pre-built `images2kmz.exe` from the [GitHub Releases](../../releases) page. No Python installation required — all dependencies are bundled.
+
+Double-click the EXE to launch the TUI, or run it from the command prompt:
+
+```cmd
+images2kmz.exe
+images2kmz.exe C:\Photos\ProjectSite -r --csv
+```
+
+### Prerequisites (Python / development)
 
 - Python 3.10+
 - Virtual environment (located at `./.venv/`)
@@ -260,6 +271,14 @@ images2kmz/
 │       ├── ui_handler.py        # Abstract UI interface for progress and output
 │       └── utils.py             # Utility functions (paths, file URIs)
 ├── tests/                 # Test suite
+├── .github/
+│   └── workflows/
+│       └── build-exe.yml  # CI: builds Windows EXE on windows-latest; attaches to GitHub Releases on tags
+├── runtime_hooks/
+│   └── rthook_pyproj.py   # PyInstaller runtime hook: sets PROJ_DATA for pyproj inside the frozen bundle
+├── images2kmz.spec        # PyInstaller build spec (--onefile, bundles icons + PROJ data + Textual CSS)
+├── build_exe.py           # Local build helper: run on Windows to produce dist/images2kmz.exe
+├── main.py                # Top-level entry point (also used by PyInstaller; includes freeze_support)
 ├── setup.py               # Package configuration
 ├── README.md
 └── requirements*.txt
