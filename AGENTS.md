@@ -165,9 +165,12 @@ The project uses the modern src layout structure:
 images2kmz/
 ├── src/
 │   └── images2kmz/        # Source package
+│       ├── icons/                    # Bundled pin icons (embedded in every KMZ)
+│       │   ├── track-0.png           # Directional arrow icon (with bearing)
+│       │   └── track-none.png        # Non-directional dot icon (no bearing)
 │       ├── __init__.py    # Package init
 │       ├── __main__.py    # python -m images2kmz entry point
-│       ├── cli.py         # CLI interface (argparse + rich)
+│       ├── cli.py         # CLI interface (argparse + rich); TUI launches by default when no args given
 │       ├── core.py        # Core KMZGenerator class
 │       ├── image_processor.py   # Image processing (GPS extraction, thumbnails)
 │       ├── csv_exporter.py     # CSV export with UTM coordinates
@@ -177,8 +180,8 @@ images2kmz/
 │       ├── logging_config.py    # Logging configuration
 │       ├── progress.py          # Progress display utilities
 │       ├── tui.py               # GeoVerra-branded TUI with directory picker
-│       ├── ui_handler.py        # Interface for UI progress and output
-│       └── utils.py             # Utility functions (paths, formatting)
+│       ├── ui_handler.py        # Abstract UI interface for progress and output
+│       └── utils.py             # Utility functions (paths, file URIs, GeoVerra path remapping)
 ├── tests/
 │   ├── conftest.py        # pytest fixtures
 │   ├── test_core.py       # Core functionality tests
@@ -190,7 +193,7 @@ images2kmz/
 │   ├── test_placemark_html_builder.py
 │   ├── test_progress.py
 │   └── test_utils.py
-├── setup.py               # Package configuration
+├── setup.py               # Package configuration (includes icons/*.png as package_data)
 ├── README.md
 └── requirements*.txt
 ```
@@ -310,6 +313,18 @@ When no explicit `-o` output is specified, all output files go to `{input_dir}/i
 HEIC originals remain in the input directory root (not moved to images2kmz/).
 
 When `-o` is explicitly provided, outputs go to the specified location's parent directory.
+
+### TUI Entry Point
+
+Invoking `images2kmz` or `python -m images2kmz` with **no arguments** launches the TUI automatically (same as `--tui`). This is implemented in `cli.py:run()` by checking `effective_args` before dispatching. The TUI provides a filesystem browser, dropdown menus with descriptive labels (resolution for thumbnail sizes, field list for presets), real-time progress bars, and a persistent log.
+
+### Bundled Pin Icons
+
+`core.py` embeds `src/images2kmz/icons/track-0.png` (directional) and `track-none.png` (non-directional) into every KMZ via `kml.addfile()` at `KMZGenerator.__init__` time. This makes the icons available offline without a network connection. `setup.py` declares `package_data={"images2kmz": ["icons/*.png"]}` so they are included in installed builds. If either file is missing at runtime, `_embed_icon()` falls back to the original Google Earth URL with a warning.
+
+### GeoVerra Network Path Remapping
+
+`utils.py:create_file_uri()` rewrites paths matching `\\*fs\GV-Volume\Projects\` (e.g. `\\calfs\GV-Volume\Projects\`) to `file:///V:/…`. This maps GeoVerra's network filesystem mounts to the `V:\` drive letter used across all offices, producing more portable file URIs in KMZ placemarks. The pattern is defined as `_GV_NETWORK_RE` at module level.
 
 ### Git
 - Never commit: `*.kmz`, `*.kml`, sample images (see .gitignore)

@@ -9,14 +9,15 @@ Python CLI tool for creating KMZ (Google Earth) files from geotagged photos.
 - Automatic GPS coordinate extraction
 - Thumbnail generation for Google Earth
 - Compass bearing icon rotation based on photo direction
-- Progress indicators with real-time updating progress bars in TUI
-- Enhanced TUI with GeoVerra branding and built-in filesystem browser
-- Persistence: Progress bars and summaries are preserved in the TUI log for auditability
-- Summary Transparency: Always displays data integrity panels (missing location/direction)
+- Bundled pin icons embedded in every KMZ — no network connection required to view placemarks
+- GeoVerra-branded TUI launches by default with no arguments; includes a built-in filesystem browser and real-time progress bars
+- Progress bars and summaries are preserved in the TUI log for auditability
+- Always displays data integrity panels (missing location/direction) for transparency
 - Export to CSV with UTM coordinates for AutoCAD (includes custom date-based point numbering, azimuth info, and full photo paths)
 - Configurable placemark info fields (direction, location, photo path, description)
 - Preset modes for common configurations (full, minimal, client)
 - ExtendedData support for structured info display in KML balloons
+- GeoVerra network path remapping: `\\*fs\GV-Volume\Projects\` paths are rewritten to `file:///V:/…` for cross-office portability
 
 ## Installation
 
@@ -42,20 +43,23 @@ pip install -r requirements-dev.txt
 
 ## Usage
 
-### Interactive Mode
+### Interactive Mode (TUI)
 
-Run without arguments for an interactive experience:
+Running with no arguments launches the GeoVerra-branded TUI directly:
 
 ```bash
 python -m images2kmz
+# or
+images2kmz
 ```
 
-You'll be prompted to:
-1. Enter a directory path containing images
-2. Optionally create the directory if it doesn't exist
-3. Output files will be saved to `{input_dir}/images2kmz/` by default
+The TUI provides:
+- A built-in filesystem browser for selecting the input directory
+- Dropdown menus for thumbnail size (with resolution labels) and placemark preset (with field summaries)
+- Real-time progress bars and a persistent log for auditability
+- Output files saved to `{input_dir}/images2kmz/` by default
 
-**Supports:** relative paths (`./photos`), absolute paths (`/Users/username/photos`), home directory (`~/photos`), and Windows paths (`C:\Users\username\Pictures`)
+Pass `--tui` explicitly to the same effect if you prefer.
 
 ### Command Line
 
@@ -107,12 +111,12 @@ images2kmz --help
 
 #### Command-Line Options
 
-- `input_dir`: Directory containing photos (optional; will prompt if not provided)
+- `input_dir`: Directory containing photos (optional; omitting it launches the TUI)
 - `-o, --output`: Output KMZ file path (default: `{input_dir}/images2kmz/photos.kmz`)
 - `-r, --recursive`: Recursively search subdirectories
 - `--thumbnail-size PRESET`: Thumbnail size preset ('small', 'medium', or 'large', default: medium)
 - `--max-images N`: Maximum number of images per KMZ output file (default: 100, 0 for unlimited)
-- `--tui`: Launch the interactive terminal user interface (TUI) with a GeoVerra-branded theme and directory browser. Features real-time progress bars and persistent logs.
+- `--tui`: Explicitly launch the TUI (same as running with no arguments)
 - `-v, --verbose`: Enable verbose console output with timestamped log file
 - `-l, --log-file`: Enable debug log file (default: `{input_dir}/images2kmz/images2kmz.log`)
 - `--csv`: Export photo coordinates to CSV file (default: `{input_dir}/images2kmz/photo_points.csv`)
@@ -156,8 +160,8 @@ When exporting to CSV using the `--csv` flag, the output file `photo_points.csv`
 5. **Description:** Contains the camera azimuth/bearing and photo description, e.g., `PHOTO(145) Site Location B` or just `PHOTO Site Location B` if azimuth is unavailable.
 6. **File Path:** The absolute file path to the original photo (same as the "Open Original Photo" link in the KMZ).
 
-### As a Python Module
-Control placemark info fields:
+#### Controlling Placemark Info Fields
+
 ```bash
 # Show only location and description (no direction or photo path)
 images2kmz ~/Photos --placemark-fields=location,description
@@ -212,9 +216,11 @@ with KMZGenerator('output.kmz', thumbnail_size='medium', placemark_config=config
    - Placemarks at each photo's GPS location
    - Photo filename as the placemark name
    - Directional icon rotated to match photo bearing (if available)
+   - Pin icons bundled inside the KMZ archive — no internet needed to display them
    - Embedded thumbnail in the description balloon
    - ExtendedData with structured info (direction, location, photo path, description)
    - Hyperlink to open the original photo (configurable)
+   - GeoVerra network paths (`\\*fs\GV-Volume\Projects\`) rewritten to `file:///V:/…` for consistent cross-office behaviour
 
 ## Output
 
@@ -236,6 +242,9 @@ The project uses a modern src layout:
 images2kmz/
 ├── src/
 │   └── images2kmz/        # Source code
+│       ├── icons/                     # Bundled pin icons (embedded in every KMZ)
+│       │   ├── track-0.png            # Directional arrow icon
+│       │   └── track-none.png         # Non-directional dot icon
 │       ├── __init__.py    # Package exports
 │       ├── __main__.py    # Entry point for python -m
 │       ├── cli.py         # Command-line interface
@@ -247,7 +256,9 @@ images2kmz/
 │       ├── placemark_html_builder.py  # HTML/ExtendedData generation
 │       ├── logging_config.py    # Logging configuration
 │       ├── progress.py          # Progress bar utilities
-│       └── utils.py             # Utility functions
+│       ├── tui.py               # GeoVerra-branded TUI with directory picker
+│       ├── ui_handler.py        # Abstract UI interface for progress and output
+│       └── utils.py             # Utility functions (paths, file URIs)
 ├── tests/                 # Test suite
 ├── setup.py               # Package configuration
 ├── README.md
