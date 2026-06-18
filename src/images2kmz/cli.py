@@ -352,7 +352,10 @@ def run(args: list | None = None) -> int:
         parser = create_parser()
         parsed_args = parser.parse_args(args)
 
-        if parsed_args.tui:
+        # Determine if any arguments were provided to the script (excluding the script name)
+        effective_args = args if args is not None else sys.argv[1:]
+
+        if parsed_args.tui or not effective_args:
             from .tui import run_tui
 
             return run_tui(parser)

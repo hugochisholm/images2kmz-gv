@@ -357,17 +357,31 @@ class TestRunFunction:
 
     @patch('images2kmz.cli.prompt_for_directory')
     def test_run_interactive_mode(self, mock_prompt):
-        """Test interactive mode (no args provided)."""
+        """Test interactive mode (input_dir missing, but other args present)."""
         mock_prompt.return_value = '/prompted/path'
         self.mock_get_files.return_value = []
         self.mock_processor.get_stats.return_value = {'processed': 0, 'skipped_no_gps': 0, 'errors': 0}
         
-        # Call run() with empty list to simulate no CLI args
-        run([])
+        # Call run() with non-empty args but missing input_dir
+        run(["-o", "photos.kmz"])
         
         mock_prompt.assert_called_once()
         # Verify processing used the prompted path
         self.mock_heic_cls.assert_called_with('/prompted/path', False)
+
+    @patch("images2kmz.tui.run_tui")
+    def test_run_tui_on_no_args(self, mock_run_tui):
+        """Verify TUI is launched when no arguments are provided."""
+        mock_run_tui.return_value = 0
+        
+        # Call run with None to simulate sys.argv usage, or empty list
+        # We need to patch sys.argv to be empty for this test
+        with patch("sys.argv", ["images2kmz"]):
+            result = run(None)
+            
+        assert result == 0
+        mock_run_tui.assert_called_once()
+
 
 
 class TestMain:
