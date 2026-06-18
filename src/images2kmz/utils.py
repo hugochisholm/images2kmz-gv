@@ -2,7 +2,15 @@ from __future__ import annotations
 
 """Utility functions for images2kmz package."""
 
+import re
 from pathlib import Path, PureWindowsPath
+
+# Matches UNC/POSIX paths to any GeoVerra network server:
+#   \\calfs\GV-Volume\Projects\  or  //vicfs/GV-Volume/Projects/
+_GV_NETWORK_RE = re.compile(
+    r'^[/\\]{2}[^/\\]+fs[/\\]GV-Volume[/\\]Projects[/\\]',
+    re.IGNORECASE,
+)
 
 
 
@@ -22,25 +30,32 @@ def get_absolute_path(path: str | Path) -> str:
 def create_file_uri(path: str | Path) -> str:
     """
     Convert a file path to a file:// URI for Windows.
-    
+
     Args:
         path: File path
-        
+
     Returns:
         file:// URI string
     """
     abs_path = get_absolute_path(path)
-    
+
+    # Remap GeoVerra network filesystem paths (e.g. \\calfs\GV-Volume\Projects\)
+    # to the corporate V:\ mapped drive so Windows can resolve them efficiently.
+    m = _GV_NETWORK_RE.match(abs_path)
+    if m:
+        remainder = abs_path[m.end():].replace('\\', '/')
+        return f"file:///V:/{remainder}"
+
     # Handle UNC network paths (\\server\share)
     if abs_path.startswith('\\\\'):
         # UNC paths need 2 slashes: file://server/share (no leading slash)
         return f"file://{abs_path.lstrip(chr(92)).replace(chr(92), '/')}"
-    
+
     # Handle regular Windows paths (C:\path)
     if '\\' in abs_path or (len(abs_path) > 1 and abs_path[1] == ':'):
-        win_path = PureWindowsPath(abs_path)
+        win_path = abs_path.replace('\\', '/')
         return f"file:///{win_path}"
-    
+
     # Unix-style paths
     # Strip leading slash since file:/// already includes the root separator
     return f"file:///{abs_path.lstrip('/')}"
