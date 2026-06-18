@@ -506,7 +506,25 @@ class Images2KMZApp(App):
             self.inputs[action.dest] = cb
             return cb
         elif action.choices:
-            options = [(str(c), str(c)) for c in action.choices]
+            if dest == "thumbnail_size":
+                from images2kmz.image_processor import THUMBNAIL_PRESETS
+                options = [
+                    (f"{c.capitalize()} ({THUMBNAIL_PRESETS[c][0]}x{THUMBNAIL_PRESETS[c][1]})", str(c))
+                    for c in action.choices
+                ]
+            elif dest == "preset":
+                preset_labels = {
+                    "full": "Full (direction, location, path, description)",
+                    "client": "Client (direction, location, description)",
+                    "minimal": "Minimal (thumbnail only)",
+                    "none": "None (no fields)",
+                }
+                options = [
+                    (preset_labels.get(c, c.capitalize()), str(c))
+                    for c in action.choices
+                ]
+            else:
+                options = [(str(c), str(c)) for c in action.choices]
 
             default_val = action.default
             if dest == "preset" and default_val is None:
